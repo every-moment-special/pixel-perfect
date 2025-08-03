@@ -1,8 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const termkit = require('terminal-kit');
-const term = termkit.terminal;
 
 class Generator {
     async getImageDimensions(imagePath) {
@@ -114,11 +112,17 @@ class Generator {
         
         process.stdout.write(`\x1b[${process.stdout.rows};1H`);
         
-        term.grabInput();
-        term.on('key', () => {
-            term.grabInput(false);
-            process.stdout.write('\x1b[2J\x1b[H');
-            process.exit(0);
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding('utf8');
+
+        process.stdin.on('data', (key) => {
+            if (key === 'q') {
+                process.stdout.write('\x1b[2J\x1b[H');
+                process.stdin.setRawMode(false);
+                process.stdin.pause();
+                process.exit(0);
+            }
         });
     }
 
@@ -139,7 +143,7 @@ class Generator {
         writeStream.write('];\n\nmodule.exports = data;\n');
         writeStream.end();
         
-        term(`Data saved to: ${outputPath}`);
+        console.log(`Data saved to: ${outputPath}`);
     }
 }
 
@@ -148,7 +152,7 @@ async function run() {
     const imagePath = args[0];
     
     if (!imagePath) {
-        term.clear();
+        process.stdout.write('\x1b[2J\x1b[H');
         console.log('Usage: node src/generate.js <path> [width] [height]\n');
         console.log('If width and height are not provided, terminal dimensions will be used.');
         process.exit(1);
