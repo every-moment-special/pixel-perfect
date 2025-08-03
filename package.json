@@ -1,0 +1,14 @@
+{
+    "name": "pixel-perfect",
+    "version": "1.0.0",
+    "main": "generate.js",
+    "scripts": {
+      "gen": "node generate.js"
+    },
+    "dependencies": {
+      "sharp": "^0.34.3",
+      "terminal-kit": "^3.0.0"
+    },
+    "author": "every-moment-special",
+    "license": "MIT"
+}
