@@ -1,9 +1,9 @@
 {
     "name": "pixel-perfect",
     "version": "1.0.0",
-    "main": "generate.js",
+    "main": "src/generate.js",
     "scripts": {
-      "gen": "node generate.js"
+      "gen": "node src/generate.js"
     },
     "dependencies": {
       "sharp": "^0.34.3",
