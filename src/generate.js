@@ -117,8 +117,9 @@ class Generator {
 async function run() {
     const args = process.argv.slice(2);
     const path = args[0];
+    const size = parseInt(args[1]);
     const generator = new Generator();
-    await generator.generate(path);
+    await generator.generate(path, size);
 }
 
 run();
