@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { display } = require('./display');
 
 class Generator {
     async getImageDimensions(imagePath) {
@@ -33,7 +34,7 @@ class Generator {
         const fullSizeImage = await image.resize(finalSizeX, finalSizeY).raw().toBuffer({ resolveWithObject: true });
         const fullSizeData = await this.imageToData(fullSizeImage);
         
-        this.display(fullSizeData);
+        display(fullSizeData);
         this.save(fullSizeData, imagePath);
     }
 
@@ -93,39 +94,6 @@ class Generator {
         return cells;
     }
 
-    display(data) {
-        process.stdout.write('\x1b[2J\x1b[H');
-        
-        const maxY = Math.max(...data.map(cell => cell.y));
-        const maxX = Math.max(...data.map(cell => cell.x));
-        const display = Array(maxY + 1).fill().map(() => Array(maxX + 1).fill(' '));
-        
-        data.forEach(cell => {
-            if (cell.y < display.length && cell.x < display[0].length) {
-                display[cell.y][cell.x] = cell.ansi + cell.char + '\x1b[0m';
-            }
-        });
-        
-        display.forEach(row => {
-            process.stdout.write(row.join('') + '\n');
-        });
-        
-        process.stdout.write(`\x1b[${process.stdout.rows};1H`);
-        
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-        process.stdin.setEncoding('utf8');
-
-        process.stdin.on('data', (key) => {
-            if (key === 'q') {
-                process.stdout.write('\x1b[2J\x1b[H');
-                process.stdin.setRawMode(false);
-                process.stdin.pause();
-                process.exit(0);
-            }
-        });
-    }
-
     save(data, originalImagePath) {
         const chunkSize = 1000;
         const outputPath = path.join('src', 'assets', path.basename(originalImagePath, path.extname(originalImagePath)) + '.js');
@@ -153,7 +121,7 @@ async function run() {
     
     if (!imagePath) {
         process.stdout.write('\x1b[2J\x1b[H');
-        console.log('Usage: node src/generate.js <path> [width] [height]\n');
+        console.log('Usage: npm run gen <path> [width] [height]\n');
         console.log('If width and height are not provided, terminal dimensions will be used.');
         process.exit(1);
     }

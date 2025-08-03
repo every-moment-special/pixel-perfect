@@ -3,7 +3,8 @@
     "version": "1.0.0",
     "main": "src/generate.js",
     "scripts": {
-        "gen": "node src/generate.js"
+        "gen": "node src/generate.js",
+        "see": "node src/display.js"
     },
     "dependencies": {
         "sharp": "^0.34.3"
