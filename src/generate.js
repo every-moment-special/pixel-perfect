@@ -148,8 +148,9 @@ async function run() {
     const imagePath = args[0];
     
     if (!imagePath) {
-        console.error('Usage: node src/generate.js <path> [width] [height]');
-        console.error('If width and height are not provided, terminal dimensions will be used.');
+        term.clear();
+        console.log('Usage: node src/generate.js <path> [width] [height]\n');
+        console.log('If width and height are not provided, terminal dimensions will be used.');
         process.exit(1);
     }
     
