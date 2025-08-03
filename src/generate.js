@@ -5,30 +5,38 @@ const termkit = require('terminal-kit');
 const term = termkit.terminal;
 
 class Generator {
-    constructor() {
-        this.width = process.stdout.columns || 80;
-        this.height = process.stdout.rows || 24;
-    }
-
-    async generate(imagePath, size = 32) {
+    async getImageDimensions(imagePath) {
         try {
             const image = sharp(imagePath);
-            const resizedImage = await image.resize(size, size).raw().toBuffer({ resolveWithObject: true });
-            const data = await this.imageToData(resizedImage);
-            
-            this.display(data);
-            this.save(data, imagePath);
+            const metadata = await image.metadata();
+            return {
+                width: metadata.width,
+                height: metadata.height
+            };
         } catch (error) {
-            term.clear();
-            term('Error: ' + error.message + '\n');
-            term('Press any key to exit...\n');
-            
-            term.grabInput();
-            term.on('key', () => {
-                term.grabInput(false);
-                process.exit(0);
-            });
+            throw new Error(`Failed to get image dimensions: ${error.message}`);
         }
+    }
+
+    async generate(imagePath, sizeX = null, sizeY = null) {
+        let finalSizeX = sizeX;
+        let finalSizeY = sizeY;
+        
+        if (sizeX === null || sizeY === null) {
+            const dimensions = await this.getImageDimensions(imagePath);
+            
+            finalSizeX = process.stdout.columns;
+            
+            const aspectRatio = dimensions.width / dimensions.height;
+            finalSizeY = Math.round(process.stdout.columns / aspectRatio);
+        }
+        
+        const image = sharp(imagePath);
+        const fullSizeImage = await image.resize(finalSizeX, finalSizeY).raw().toBuffer({ resolveWithObject: true });
+        const fullSizeData = await this.imageToData(fullSizeImage);
+        
+        this.display(fullSizeData);
+        this.save(fullSizeData, imagePath);
     }
 
     async imageToData(imageData) {
@@ -37,6 +45,9 @@ class Generator {
         const width = info.width;
         const channels = info.channels;
         const cells = [];
+
+        const maxCells = 100000;
+        let cellCount = 0;
 
         for (let y = 0; y < height - 1; y += 2) {
             for (let x = 0; x < width; x++) {
@@ -71,6 +82,12 @@ class Generator {
                         char: char,
                         ansi: ansi
                     });
+                    cellCount++;
+                    
+                    if (cellCount >= maxCells) {
+                        console.log(`Warning: Image too large, limiting to ${maxCells} cells`);
+                        return cells;
+                    }
                 }
             }
         }
@@ -79,9 +96,8 @@ class Generator {
     }
 
     display(data) {
-        term.clear();
-        term.moveTo(1, 1);
-
+        process.stdout.write('\x1b[2J\x1b[H');
+        
         const maxY = Math.max(...data.map(cell => cell.y));
         const maxX = Math.max(...data.map(cell => cell.x));
         const display = Array(maxY + 1).fill().map(() => Array(maxX + 1).fill(' '));
@@ -93,22 +109,35 @@ class Generator {
         });
         
         display.forEach(row => {
-            term(row.join('') + '\n');
+            process.stdout.write(row.join('') + '\n');
         });
+        
+        process.stdout.write(`\x1b[${process.stdout.rows};1H`);
         
         term.grabInput();
         term.on('key', () => {
             term.grabInput(false);
-            term.clear();
+            process.stdout.write('\x1b[2J\x1b[H');
             process.exit(0);
         });
     }
 
     save(data, originalImagePath) {
-        const code = `const data = [\n${data.map(cell => `{ x: ${cell.x}, y: ${cell.y}, char: '${cell.char}', ansi: '${cell.ansi}' },`).join('\n')}\n];\n\nmodule.exports = data;\n`;
-        
+        const chunkSize = 1000;
         const outputPath = path.join('src', 'assets', path.basename(originalImagePath, path.extname(originalImagePath)) + '.js');
-        fs.writeFileSync(outputPath, code);
+        const writeStream = fs.createWriteStream(outputPath);
+        writeStream.write('const data = [\n');
+
+        for (let i = 0; i < data.length; i += chunkSize) {
+            const chunk = data.slice(i, i + chunkSize);
+            const chunkCode = chunk.map(cell => 
+                `{ x: ${cell.x}, y: ${cell.y}, char: '${cell.char}', ansi: '${cell.ansi}' },`
+            ).join('\n');
+            writeStream.write(chunkCode + '\n');
+        }
+        
+        writeStream.write('];\n\nmodule.exports = data;\n');
+        writeStream.end();
         
         term(`Data saved to: ${outputPath}`);
     }
@@ -116,10 +145,19 @@ class Generator {
 
 async function run() {
     const args = process.argv.slice(2);
-    const path = args[0];
-    const size = parseInt(args[1]);
+    const imagePath = args[0];
+    
+    if (!imagePath) {
+        console.error('Usage: node src/generate.js <path> [width] [height]');
+        console.error('If width and height are not provided, terminal dimensions will be used.');
+        process.exit(1);
+    }
+    
+    const sizeX = args[1] ? parseInt(args[1]) : null;
+    const sizeY = args[2] ? parseInt(args[2]) : null;
+    
     const generator = new Generator();
-    await generator.generate(path, size);
+    await generator.generate(imagePath, sizeX, sizeY);
 }
 
 run();
