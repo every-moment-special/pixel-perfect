@@ -96,19 +96,25 @@ class Generator {
 
     save(data, originalImagePath) {
         const chunkSize = 1000;
-        const outputPath = path.join('src', 'assets', path.basename(originalImagePath, path.extname(originalImagePath)) + '.js');
+        const outputPath = path.join('src', 'assets', path.basename(originalImagePath, path.extname(originalImagePath)) + '.json');
         const writeStream = fs.createWriteStream(outputPath);
-        writeStream.write('const data = [\n');
+        writeStream.write('[\n');
 
         for (let i = 0; i < data.length; i += chunkSize) {
             const chunk = data.slice(i, i + chunkSize);
-            const chunkCode = chunk.map(cell => 
-                `{ x: ${cell.x}, y: ${cell.y}, char: '${cell.char}', ansi: '${cell.ansi}' },`
-            ).join('\n');
+            const chunkCode = chunk.map((cell, index) => {
+                const escapedAnsi = JSON.stringify(cell.ansi).slice(1, -1);
+                const isLastInChunk = index === chunk.length - 1;
+                const isLastChunk = i + chunkSize >= data.length;
+                const comma = (isLastInChunk && isLastChunk) ? '' : ',';
+                const line = `{ "x": ${cell.x}, "y": ${cell.y}, "char": "${cell.char}", "ansi": "${escapedAnsi}" }${comma}`;
+                
+                return line;
+            }).join('\n');
             writeStream.write(chunkCode + '\n');
         }
         
-        writeStream.write('];\n\nmodule.exports = data;\n');
+        writeStream.write(']\n');
         writeStream.end();
         
         console.log(`Data saved to: ${outputPath}`);

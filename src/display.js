@@ -44,19 +44,27 @@ if (require.main === module) {
         process.exit(1);
     }
     
-    if (dataPath.endsWith('.js')) {
-        const data = require(path.resolve(dataPath));
-        display(data);
-    } else {
-        try {
-            const fileContent = fs.readFileSync(dataPath, 'utf8');
+    try {
+        const fileContent = fs.readFileSync(dataPath, 'utf8');
+        
+        if (dataPath.endsWith('.json')) {
+            // Handle JavaScript object syntax in .json files (from generate.js)
+            // Convert JavaScript object syntax to valid JSON
+            const jsonString = fileContent
+                .replace(/(\w+):/g, '"$1":')  // Quote property names
+                .replace(/'/g, '"');           // Replace single quotes with double quotes
+            
+            const data = JSON.parse(jsonString);
+            display(data);
+        } else {
+            // Try to parse as regular JSON
             const data = JSON.parse(fileContent);
             display(data);
-        } catch (error) {
-            console.error('Error reading file:', error.message);
-            console.log('Expected format: JSON');
-            process.exit(1);
         }
+    } catch (error) {
+        console.error('Error reading file:', error.message);
+        console.log('Expected format: JSON or JavaScript object syntax');
+        process.exit(1);
     }
 }
 
