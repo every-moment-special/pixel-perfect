@@ -59,6 +59,9 @@ class TerminalGUI {
             const items = [];
             
             for (const file of files) {
+                // Skip . and .. directories
+                if (file === '.' || file === '..') continue;
+                
                 const fullPath = path.join(this.currentDirectory, file);
                 const stats = fs.statSync(fullPath);
                 
@@ -643,29 +646,33 @@ class TerminalGUI {
                 if (this.viewMode === 'grid') {
                     const { columns, gapWidth } = this.calculateGridDimensions();
                     const minImageWidth = 32;
+                    const minOtherWidth = 20;
                     const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
                     const baseItemWidth = Math.floor(availableWidth / columns);
-                    const avgItemWidth = Math.max(minImageWidth, baseItemWidth);
                     const itemHeight = 17;
+                    
                     const row = Math.floor((adjustedY - headerHeight) / itemHeight);
-                    const col = Math.floor((x - 1) / (avgItemWidth + gapWidth));
+                    let col = 0;
+                    let currentX = 1;
+                    
+                    for (let c = 0; c < columns; c++) {
+                        const itemWidth = Math.max(c === 0 ? minImageWidth : minOtherWidth, baseItemWidth);
+                        if (x >= currentX && x < currentX + itemWidth) {
+                            col = c;
+                            break;
+                        }
+                        currentX += itemWidth + gapWidth;
+                    }
+                    
                     listIndex = (row + this.scrollOffset) * columns + col;
                     
-                    const itemStartX = 1 + col * (avgItemWidth + gapWidth);
-                    const itemEndX = itemStartX + avgItemWidth;
-                    
-                    if (x >= itemStartX && x < itemEndX) {
-                        const itemHeight = 17;
-                        const previewHeight = 16;
-                        
+                    if (listIndex >= 0 && listIndex < this.files.length) {
                         const relativeY = (adjustedY - headerHeight) % itemHeight;
                         
-                        if (relativeY >= 0 && relativeY <= itemHeight) {
-                            if (relativeY >= 15) {
-                                clickedOnFilename = true;
-                            } else if (relativeY >= 0 && relativeY < previewHeight) {
-                                clickedOnPreview = true;
-                            }
+                        if (relativeY >= 15) {
+                            clickedOnFilename = true;
+                        } else if (relativeY >= 0 && relativeY < 16) {
+                            clickedOnPreview = true;
                         }
                     }
                 } else {
@@ -715,11 +722,24 @@ class TerminalGUI {
                     if (this.viewMode === 'grid') {
                         const { columns, gapWidth } = this.calculateGridDimensions();
                         const minImageWidth = 32;
+                        const minOtherWidth = 20;
                         const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
                         const baseItemWidth = Math.floor(availableWidth / columns);
-                        const avgItemWidth = Math.max(minImageWidth, baseItemWidth);
-                        const row = adjustedY - headerHeight;
-                        const col = Math.floor((x - 1) / (avgItemWidth + gapWidth));
+                        const itemHeight = 17;
+                        
+                        const row = Math.floor((adjustedY - headerHeight) / itemHeight);
+                        let col = 0;
+                        let currentX = 1;
+                        
+                        for (let c = 0; c < columns; c++) {
+                            const itemWidth = Math.max(c === 0 ? minImageWidth : minOtherWidth, baseItemWidth);
+                            if (x >= currentX && x < currentX + itemWidth) {
+                                col = c;
+                                break;
+                            }
+                            currentX += itemWidth + gapWidth;
+                        }
+                        
                         hoverIndex = (row + this.scrollOffset) * columns + col;
                     } else {
                         hoverIndex = adjustedY - headerHeight + this.scrollOffset;
