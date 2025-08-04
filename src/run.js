@@ -19,7 +19,7 @@ class TerminalGUI {
         this.terminalWidth = Math.max(this.terminalWidth, 40);
         this.terminalHeight = Math.max(this.terminalHeight, 15);
         
-        this.maxDisplayLines = Math.max(1, this.terminalHeight - 8);
+        this.maxDisplayLines = Math.max(1, this.terminalHeight - 5);
         this.rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
@@ -43,7 +43,7 @@ class TerminalGUI {
             this.terminalHeight = process.stdout.rows || 24;
             this.terminalWidth = Math.max(this.terminalWidth, 40);
             this.terminalHeight = Math.max(this.terminalHeight, 15);
-            this.maxDisplayLines = Math.max(1, this.terminalHeight - 8);
+            this.maxDisplayLines = Math.max(1, this.terminalHeight - 5);
             await this.render();
         });
     }
@@ -194,31 +194,31 @@ class TerminalGUI {
     }
 
     drawHeader() {
-        const topBorder = '╔' + '═'.repeat(this.terminalWidth - 2) + '╗';
-        const bottomBorder = '╚' + '═'.repeat(this.terminalWidth - 2) + '╝';
+        // const topBorder = '╔' + '═'.repeat(this.terminalWidth - 2) + '╗';
+        // const bottomBorder = '╚' + '═'.repeat(this.terminalWidth - 2) + '╝';
         
-        console.log('\x1b[36m' + topBorder + '\x1b[0m');
+        // console.log('\x1b[36m' + topBorder + '\x1b[0m');
         
-        const title = 'Media Files Browser';
-        const titlePadding = Math.floor((this.terminalWidth - 2 - title.length) / 2);
-        const titleLine = '║' + ' '.repeat(titlePadding) + '\x1b[1m' + title + '\x1b[0m' + ' '.repeat(this.terminalWidth - 2 - title.length - titlePadding) + '║';
-        console.log('\x1b[36m' + titleLine + '\x1b[0m');
+        // const title = 'Media Files Browser';
+        // const titlePadding = Math.floor((this.terminalWidth - 2 - title.length) / 2);
+        // const titleLine = '║' + ' '.repeat(titlePadding) + '\x1b[1m' + title + '\x1b[0m' + ' '.repeat(this.terminalWidth - 2 - title.length - titlePadding) + '║';
+        // console.log('\x1b[36m' + titleLine + '\x1b[0m');
         
-        const dirLabel = 'Directory: ';
-        const dirText = this.currentDirectory;
-        const maxDirLength = this.terminalWidth - 4 - dirLabel.length;
-        const displayDir = dirText.length > maxDirLength ? '...' + dirText.slice(-maxDirLength + 3) : dirText;
-        const dirPadding = ' '.repeat(this.terminalWidth - 2 - dirLabel.length - displayDir.length);
-        const dirLine = '║' + dirLabel + '\x1b[33m' + displayDir + '\x1b[0m' + dirPadding + '║';
-        console.log('\x1b[36m' + dirLine + '\x1b[0m');
+        // const dirLabel = 'Directory: ';
+        // const dirText = this.currentDirectory;
+        // const maxDirLength = this.terminalWidth - 4 - dirLabel.length;
+        // const displayDir = dirText.length > maxDirLength ? '...' + dirText.slice(-maxDirLength + 3) : dirText;
+        // const dirPadding = ' '.repeat(this.terminalWidth - 2 - dirLabel.length - displayDir.length);
+        // const dirLine = '║' + dirLabel + '\x1b[33m' + displayDir + '\x1b[0m' + dirPadding + '║';
+        // console.log('\x1b[36m' + dirLine + '\x1b[0m');
         
-        const countLabel = 'Items found: ';
-        const countText = this.files.length.toString();
-        const countPadding = ' '.repeat(this.terminalWidth - 2 - countLabel.length - countText.length);
-        const countLine = '║' + countLabel + '\x1b[32m' + countText + '\x1b[0m' + countPadding + '║';
-        console.log('\x1b[36m' + countLine + '\x1b[0m');
+        // const countLabel = 'Items found: ';
+        // const countText = this.files.length.toString();
+        // const countPadding = ' '.repeat(this.terminalWidth - 2 - countLabel.length - countText.length);
+        // const countLine = '║' + countLabel + '\x1b[32m' + countText + '\x1b[0m' + countPadding + '║';
+        // console.log('\x1b[36m' + countLine + '\x1b[0m');
         
-        console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
+        // console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
     }
 
     async drawFileList() {
@@ -406,7 +406,7 @@ class TerminalGUI {
     }
 
     drawFooter() {
-        const footerStartLine = this.terminalHeight - 3;
+        const footerStartLine = this.terminalHeight - 5;
         process.stdout.write(`\x1b[${footerStartLine};1H`);
         
         const topBorder = '╔' + '═'.repeat(this.terminalWidth - 2) + '╗';
@@ -431,6 +431,20 @@ class TerminalGUI {
         const remainingSpace = this.terminalWidth - 2 - navText.length - navPadding;
         const navLine = '║' + ' '.repeat(Math.max(0, navPadding)) + '\x1b[90m' + navText + '\x1b[0m' + ' '.repeat(Math.max(0, remainingSpace)) + '║';
         console.log('\x1b[36m' + navLine + '\x1b[0m');
+
+        const dirLabel = 'Directory: ';
+        const dirText = this.currentDirectory;
+        const maxDirLength = this.terminalWidth - 4 - dirLabel.length;
+        const displayDir = dirText.length > maxDirLength ? '...' + dirText.slice(-maxDirLength + 3) : dirText;
+        const dirPadding = ' '.repeat(this.terminalWidth - 2 - dirLabel.length - displayDir.length);
+        const dirLine = '║' + dirLabel + '\x1b[33m' + displayDir + '\x1b[0m' + dirPadding + '║';
+        console.log('\x1b[36m' + dirLine + '\x1b[0m');
+        
+        const countLabel = 'Items found: ';
+        const countText = this.files.length.toString();
+        const countPadding = ' '.repeat(this.terminalWidth - 2 - countLabel.length - countText.length);
+        const countLine = '║' + countLabel + '\x1b[32m' + countText + '\x1b[0m' + countPadding + '║';
+        console.log('\x1b[36m' + countLine + '\x1b[0m');
         
         console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
     }
@@ -619,7 +633,7 @@ class TerminalGUI {
             }
             
             const adjustedY = y - 1;
-            const headerHeight = 5;
+            const headerHeight = 0;
             
             if ((button === 0 || button === 3) && adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
                 let listIndex;
