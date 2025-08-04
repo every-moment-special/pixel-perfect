@@ -11,7 +11,7 @@ const CONFIG = {
     fps: process.env.VIDEO_FPS ? parseInt(process.env.VIDEO_FPS) : 10
 };
 
-class VideoPlayer {
+class Player {
     constructor() {
         this.framesDir = null;
         this.frameFiles = [];
@@ -368,7 +368,6 @@ async function run() {
     
     if (!videoPath) {
         console.log('Usage: npm run play <video_path>\n');
-        console.log('Example: npm run play resources/v.mp4');
         process.exit(1);
     }
     
@@ -377,7 +376,7 @@ async function run() {
         process.exit(1);
     }
     
-    const player = new VideoPlayer();
+    const player = new Player();
     
     try {
         await player.loadVideo(videoPath);
@@ -392,4 +391,4 @@ if (require.main === module) {
     run();
 }
 
-module.exports = { VideoPlayer };
+module.exports = { Player };
