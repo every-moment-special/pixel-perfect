@@ -2,8 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { Generator } = require('./generate');
-const { display } = require('./display');
-const sharp = require('sharp');
 
 const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga'];
 
@@ -31,6 +29,8 @@ class TerminalGUI {
         this.lastClickTarget = null;
         this.doubleClickThreshold = 500;
         this.mouseEnabled = false;
+        this.hoverIndex = -1;
+        this.debugMouse = process.argv.includes('--debug-mouse');
         
         this.disableMouse = process.argv.includes('--no-mouse');
         
@@ -420,7 +420,7 @@ class TerminalGUI {
         let navText;
         const viewModeText = `View: ${this.viewMode.toUpperCase()}`;
         if (this.mouseEnabled) {
-            navText = `${viewModeText} | ↑/↓ Select  Mouse: Click  Double-Click: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+            navText = `${viewModeText} | ↑/↓ Select  Mouse: Single-Click Select  Double-Click Open  Right-Click: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
         } else {
             navText = `${viewModeText} | ↑/↓ Select  Enter: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
         }
@@ -508,18 +508,18 @@ class TerminalGUI {
         if (selectedItem.type === 'directory') {
             this.navigateToDirectory(selectedItem.path);
         } else {
-            console.log(`\n\x1b[33mOpening: ${selectedItem.name}\x1b[0m`);
+            // console.log(`\n\x1b[33mOpening: ${selectedItem.name}\x1b[0m`);
             
-            console.log(`\x1b[36mFile Details:\x1b[0m`);
-            console.log(`  Name: ${selectedItem.name}`);
-            console.log(`  Size: ${this.formatFileSize(selectedItem.size)}`);
-            console.log(`  Type: ${selectedItem.extension.toUpperCase()}`);
-            console.log(`  Path: ${selectedItem.path}`);
+            // console.log(`\x1b[36mFile Details:\x1b[0m`);
+            // console.log(`  Name: ${selectedItem.name}`);
+            // console.log(`  Size: ${this.formatFileSize(selectedItem.size)}`);
+            // console.log(`  Type: ${selectedItem.extension.toUpperCase()}`);
+            // console.log(`  Path: ${selectedItem.path}`);
             
-            console.log('\n\x1b[90mPress any key to continue...\x1b[0m');
-            this.rl.question('', () => {
-                this.render();
-            });
+            // console.log('\n\x1b[90mPress any key to continue...\x1b[0m');
+            // this.rl.question('', () => {
+            //     this.render();
+            // });
         }
     }
 
@@ -551,6 +551,7 @@ class TerminalGUI {
 
         if (!this.disableMouse) {
             process.stdout.write('\x1b[?1000h');
+            process.stdout.write('\x1b[?1002h');
             this.mouseEnabled = true;
         }
 
@@ -584,8 +585,11 @@ class TerminalGUI {
             } else if (this.mouseEnabled && key.startsWith('\x1b[') && key.includes('M')) {
                 // Alternative mouse event format
                 await this.handleMouseEvent(key);
+            } else if (this.mouseEnabled && key.startsWith('\x1b[') && key.includes('t')) {
+                // Mouse movement events (optional hover support)
+                await this.handleMouseMovement(key);
             } else if (this.mouseEnabled && key.length > 1 && key.charCodeAt(0) === 27) {
-                // Ignore unrecognized escape sequences silently
+                await this.handleMouseEvent(key);
             }
         });
     }
@@ -593,7 +597,7 @@ class TerminalGUI {
     async handleMouseEvent(data) {
         try {
             let button, x, y;
-            
+             
             if (data.startsWith('\x1b[M')) {
                 button = data.charCodeAt(3) - 32;
                 x = data.charCodeAt(4) - 32;
@@ -605,17 +609,29 @@ class TerminalGUI {
                     x = parseInt(parts[1]) - 32;
                     y = parseInt(parts[2]) - 32;
                 } else {
+                    if (this.debugMouse) {
+                        console.log(`\n\x1b[33mFailed to parse mouse event parts: ${parts}\x1b[0m`);
+                    }
                     return;
                 }
             } else {
-                return;
+                if (data.length >= 6) {
+                    button = data.charCodeAt(3) - 32;
+                    x = data.charCodeAt(4) - 32;
+                    y = data.charCodeAt(5) - 32;
+                } else {
+                    return;
+                }
             }
             
             const adjustedY = y - 1;
             const headerHeight = 5;
             
+            // Check if click is within the file list area
             if ((button === 0 || button === 3) && adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
                 let listIndex;
+                let clickedOnPreview = false;
+                let clickedOnFilename = false;
                 
                 if (this.viewMode === 'grid') {
                     const { columns, gapWidth } = this.calculateGridDimensions();
@@ -623,19 +639,63 @@ class TerminalGUI {
                     const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
                     const baseItemWidth = Math.floor(availableWidth / columns);
                     const avgItemWidth = Math.max(minImageWidth, baseItemWidth);
-                    const row = adjustedY - headerHeight;
+                    const itemHeight = 17; // Height of each grid item
+                    const row = Math.floor((adjustedY - headerHeight) / itemHeight);
                     const col = Math.floor((x - 1) / (avgItemWidth + gapWidth));
                     listIndex = (row + this.scrollOffset) * columns + col;
+                    
+                    // Calculate if click is on preview area or filename area
+                    const itemStartX = 1 + col * (avgItemWidth + gapWidth);
+                    const itemEndX = itemStartX + avgItemWidth;
+                    
+                    if (x >= itemStartX && x < itemEndX) {
+                        const itemHeight = 17; // Total height of grid item
+                        const previewHeight = 16; // Height of preview area
+                        
+                        // Calculate the relative Y position within the current row
+                        const relativeY = (adjustedY - headerHeight) % itemHeight;
+                        
+                        if (relativeY >= 0 && relativeY <= itemHeight) {
+                            if (relativeY >= 15) { // Lines 21+ (relativeY>=15) are filename
+                                clickedOnFilename = true;
+                            } else if (relativeY >= 0 && relativeY < previewHeight) {
+                                clickedOnPreview = true;
+                            }
+                        }
+                    }
                 } else {
                     listIndex = adjustedY - headerHeight + this.scrollOffset;
+                    clickedOnFilename = true; // In list view, everything is essentially filename
                 }
                 
                 if (listIndex >= 0 && listIndex < this.files.length) {
+                    const wasSelected = this.selectedIndex === listIndex;
                     this.selectedIndex = listIndex;
-                    await this.render();
                     
-                    if (button === 3) {
-                        this.handleMouseClick();
+                    // Debug logging
+                    if (this.debugMouse) {
+                        const selectedItem = this.files[this.selectedIndex];
+                        console.log(`\n\x1b[33mDebug: Click at (${x}, ${y}) -> Item: ${selectedItem.name} (${selectedItem.type})`);
+                        console.log(`Preview: ${clickedOnPreview}, Filename: ${clickedOnFilename}\x1b[0m`);
+                    }
+                    
+                    // Always update selection on single click
+                    if (!wasSelected) {
+                        await this.render();
+                    }
+                    
+                    // Handle different click types
+                    if (button === 0) { // Left click
+                        // Handle single click (selection) and double click (open)
+                        await this.handleLeftMouseClick();
+                    } else if (button === 3) { // Right click (immediate open)
+                        // Immediate action on right click
+                        const selectedItem = this.files[this.selectedIndex];
+                        if (selectedItem.type === 'directory') {
+                            await this.navigateToDirectory(selectedItem.path);
+                        } else {
+                            this.viewSelectedFile();
+                        }
                     }
                 }
             }
@@ -645,7 +705,72 @@ class TerminalGUI {
         }
     }
 
-    handleMouseClick() {
+    async handleMouseMovement(data) {
+        try {
+            const parts = data.slice(2, -1).split(';');
+            if (parts.length >= 2) {
+                const x = parseInt(parts[0]) - 32;
+                const y = parseInt(parts[1]) - 32;
+                
+                const adjustedY = y - 1;
+                const headerHeight = 5;
+                
+                if (adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
+                    let hoverIndex;
+                    
+                    if (this.viewMode === 'grid') {
+                        const { columns, gapWidth } = this.calculateGridDimensions();
+                        const minImageWidth = 32;
+                        const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
+                        const baseItemWidth = Math.floor(availableWidth / columns);
+                        const avgItemWidth = Math.max(minImageWidth, baseItemWidth);
+                        const row = adjustedY - headerHeight;
+                        const col = Math.floor((x - 1) / (avgItemWidth + gapWidth));
+                        hoverIndex = (row + this.scrollOffset) * columns + col;
+                    } else {
+                        hoverIndex = adjustedY - headerHeight + this.scrollOffset;
+                    }
+                    
+                    if (hoverIndex >= 0 && hoverIndex < this.files.length && hoverIndex !== this.hoverIndex) {
+                        this.hoverIndex = hoverIndex;
+                        this.showHoverInfo(hoverIndex);
+                    }
+                }
+            }
+        } catch (error) {
+        }
+    }
+
+    showHoverInfo(index) {
+        const item = this.files[index];
+        if (item) {
+            const infoLine = this.terminalHeight - 4;
+            process.stdout.write(`\x1b[${infoLine};1H`);
+            
+            let info = '';
+            if (item.type === 'directory') {
+                info = `📁 ${item.name} [Directory]`;
+            } else {
+                info = `📄 ${item.name} (${this.formatFileSize(item.size)}) [${item.extension.toUpperCase()}]`;
+            }
+            
+            const maxLength = this.terminalWidth - 2;
+            if (info.length > maxLength) {
+                info = info.substring(0, maxLength - 3) + '...';
+            }
+            
+            process.stdout.write(`\x1b[90m${info}\x1b[0m`);
+            
+            setTimeout(() => {
+                if (this.hoverIndex === index) {
+                    process.stdout.write(`\x1b[${infoLine};1H`);
+                    process.stdout.write(' '.repeat(info.length));
+                }
+            }, 2000);
+        }
+    }
+
+    async handleLeftMouseClick() {
         if (this.files.length === 0) return;
         
         const selectedItem = this.files[this.selectedIndex];
@@ -656,8 +781,12 @@ class TerminalGUI {
             this.lastClickTime = 0;
             this.lastClickTarget = null;
             
+            if (this.debugMouse) {
+                console.log(`\n\x1b[32mDouble-click detected: ${selectedItem.name}\x1b[0m`);
+            }
+            
             if (selectedItem.type === 'directory') {
-                this.navigateToDirectory(selectedItem.path);
+                await this.navigateToDirectory(selectedItem.path);
             } else {
                 this.viewSelectedFile();
             }
@@ -665,6 +794,10 @@ class TerminalGUI {
             this.lastClickTime = currentTime;
             this.lastClickTarget = selectedItem.path;
         }
+    }
+
+    handleMouseClick() {
+        this.handleLeftMouseClick();
     }
 
     async handleEnterKey() {
@@ -686,7 +819,7 @@ class TerminalGUI {
         } else {
             this.lastClickTime = currentTime;
             this.lastClickTarget = selectedItem.path;
-            
+
             await this.render();
         }
     }
@@ -705,6 +838,7 @@ class TerminalGUI {
     quit() {
         if (this.mouseEnabled) {
             process.stdout.write('\x1b[?1000l');
+            process.stdout.write('\x1b[?1002l');
         }
         process.stdout.write('\x1b[?25h');
         process.stdin.setRawMode(false);
@@ -726,6 +860,7 @@ class TerminalGUI {
         process.on('SIGINT', () => {
             if (this.mouseEnabled) {
                 process.stdout.write('\x1b[?1000l');
+                process.stdout.write('\x1b[?1002l');
             }
             process.stdout.write('\x1b[?25h');
             process.exit(0);
