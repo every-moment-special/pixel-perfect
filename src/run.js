@@ -30,11 +30,9 @@ class TerminalGUI {
         this.doubleClickThreshold = 500;
         this.mouseEnabled = false;
         this.hoverIndex = -1;
-        this.debugMouse = process.argv.includes('--debug-mouse');
         
         this.disableMouse = process.argv.includes('--no-mouse');
         
-        // Thumbnail cache
         this.thumbnailCache = new Map();
         this.generator = new Generator();
         
@@ -308,10 +306,9 @@ class TerminalGUI {
         
         const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
         const baseItemWidth = Math.floor(availableWidth / columns);
-        const itemHeight = 17; // Height for 32x32 thumbnail (16 rows) + 1 row for filename + 1 row for arrow
+        const itemHeight = 17;
         
         for (let row = 0; row < Math.min(rows, this.maxDisplayLines); row++) {
-            // Process each column in the current row
             const rowItems = [];
             for (let col = 0; col < columns; col++) {
                 const index = row * columns + col + this.scrollOffset;
@@ -609,9 +606,6 @@ class TerminalGUI {
                     x = parseInt(parts[1]) - 32;
                     y = parseInt(parts[2]) - 32;
                 } else {
-                    if (this.debugMouse) {
-                        console.log(`\n\x1b[33mFailed to parse mouse event parts: ${parts}\x1b[0m`);
-                    }
                     return;
                 }
             } else {
@@ -627,7 +621,6 @@ class TerminalGUI {
             const adjustedY = y - 1;
             const headerHeight = 5;
             
-            // Check if click is within the file list area
             if ((button === 0 || button === 3) && adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
                 let listIndex;
                 let clickedOnPreview = false;
@@ -639,24 +632,22 @@ class TerminalGUI {
                     const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
                     const baseItemWidth = Math.floor(availableWidth / columns);
                     const avgItemWidth = Math.max(minImageWidth, baseItemWidth);
-                    const itemHeight = 17; // Height of each grid item
+                    const itemHeight = 17;
                     const row = Math.floor((adjustedY - headerHeight) / itemHeight);
                     const col = Math.floor((x - 1) / (avgItemWidth + gapWidth));
                     listIndex = (row + this.scrollOffset) * columns + col;
                     
-                    // Calculate if click is on preview area or filename area
                     const itemStartX = 1 + col * (avgItemWidth + gapWidth);
                     const itemEndX = itemStartX + avgItemWidth;
                     
                     if (x >= itemStartX && x < itemEndX) {
-                        const itemHeight = 17; // Total height of grid item
-                        const previewHeight = 16; // Height of preview area
+                        const itemHeight = 17;
+                        const previewHeight = 16;
                         
-                        // Calculate the relative Y position within the current row
                         const relativeY = (adjustedY - headerHeight) % itemHeight;
                         
                         if (relativeY >= 0 && relativeY <= itemHeight) {
-                            if (relativeY >= 15) { // Lines 21+ (relativeY>=15) are filename
+                            if (relativeY >= 15) {
                                 clickedOnFilename = true;
                             } else if (relativeY >= 0 && relativeY < previewHeight) {
                                 clickedOnPreview = true;
@@ -665,31 +656,20 @@ class TerminalGUI {
                     }
                 } else {
                     listIndex = adjustedY - headerHeight + this.scrollOffset;
-                    clickedOnFilename = true; // In list view, everything is essentially filename
+                    clickedOnFilename = true;
                 }
                 
                 if (listIndex >= 0 && listIndex < this.files.length) {
                     const wasSelected = this.selectedIndex === listIndex;
                     this.selectedIndex = listIndex;
                     
-                    // Debug logging
-                    if (this.debugMouse) {
-                        const selectedItem = this.files[this.selectedIndex];
-                        console.log(`\n\x1b[33mDebug: Click at (${x}, ${y}) -> Item: ${selectedItem.name} (${selectedItem.type})`);
-                        console.log(`Preview: ${clickedOnPreview}, Filename: ${clickedOnFilename}\x1b[0m`);
-                    }
-                    
-                    // Always update selection on single click
                     if (!wasSelected) {
                         await this.render();
                     }
                     
-                    // Handle different click types
-                    if (button === 0) { // Left click
-                        // Handle single click (selection) and double click (open)
+                    if (button === 0) {
                         await this.handleLeftMouseClick();
-                    } else if (button === 3) { // Right click (immediate open)
-                        // Immediate action on right click
+                    } else if (button === 3) {
                         const selectedItem = this.files[this.selectedIndex];
                         if (selectedItem.type === 'directory') {
                             await this.navigateToDirectory(selectedItem.path);
@@ -780,10 +760,6 @@ class TerminalGUI {
             (currentTime - this.lastClickTime) < this.doubleClickThreshold) {
             this.lastClickTime = 0;
             this.lastClickTarget = null;
-            
-            if (this.debugMouse) {
-                console.log(`\n\x1b[32mDouble-click detected: ${selectedItem.name}\x1b[0m`);
-            }
             
             if (selectedItem.type === 'directory') {
                 await this.navigateToDirectory(selectedItem.path);
