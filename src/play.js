@@ -14,6 +14,23 @@ class VideoPlayer {
         this.cursorHidden = false;
     }
 
+    // Progress bar utilities
+    createProgressBar(width = 40) {
+        return {
+            width,
+            update: (progress, label = '') => {
+                const filled = Math.round(width * progress);
+                const empty = width - filled;
+                const bar = '█'.repeat(filled) + '░'.repeat(empty);
+                const percentage = Math.round(progress * 100);
+                process.stdout.write(`\r${label} [${bar}] ${percentage}%`);
+            },
+            clear: () => {
+                process.stdout.write('\r' + ' '.repeat(process.stdout.columns || 80) + '\r');
+            }
+        };
+    }
+
     hideCursor() {
         if (!this.cursorHidden) {
             const rows = process.stdout.rows || 24;
@@ -37,7 +54,6 @@ class VideoPlayer {
 
         return new Promise((resolve, reject) => {
             console.log('Extracting frames with FFmpeg...');
-            console.log('Command: ffmpeg -i', videoPath, '-vf', `fps=${this.fps}`, '-frame_pts', '1', path.join(outputDir, 'frame_%04d.png'));
             
             const ffmpeg = spawn('ffmpeg', [
                 '-i', videoPath,
@@ -48,12 +64,14 @@ class VideoPlayer {
 
             ffmpeg.stderr.on('data', (data) => {
                 const output = data.toString();
-                console.log('FFmpeg:', output.trim());
+                if (output.includes('Error') || output.includes('error')) {
+                    console.log('FFmpeg Error:', output.trim());
+                }
             });
 
             ffmpeg.on('close', (code) => {
                 if (code === 0) {
-                    console.log('Frame extraction completed');
+                    console.log('✓ Frame extraction completed');
                     resolve(outputDir);
                 } else {
                     reject(new Error(`FFmpeg process exited with code ${code}`));
@@ -68,15 +86,11 @@ class VideoPlayer {
 
     async convertFrameToArt(framePath) {
         try {
-            console.log('Converting frame:', framePath);
-            
             const sizeX = process.stdout.columns || 80;
             const image = sharp(framePath);
             const metadata = await image.metadata();
             const aspectRatio = metadata.width / metadata.height;
             const sizeY = Math.round(sizeX / aspectRatio);
-
-            console.log(`Resizing to ${sizeX}x${sizeY}`);
 
             const fullSizeImage = await image.resize(sizeX, sizeY).raw().toBuffer({ resolveWithObject: true });
             
@@ -132,7 +146,6 @@ class VideoPlayer {
                 if (cellCount >= maxCells) break;
             }
             
-            console.log(`Frame converted: ${cells.length} cells`);
             return cells;
         } catch (error) {
             console.error(`Error converting frame ${framePath}:`, error.message);
@@ -147,23 +160,26 @@ class VideoPlayer {
 
         console.log(`Converting ${files.length} frames to terminal art...`);
         
+        const progressBar = this.createProgressBar();
         const frameData = [];
+        
         for (let i = 0; i < files.length; i++) {
             const framePath = path.join(framesDir, files[i]);
             const artData = await this.convertFrameToArt(framePath);
             frameData.push(artData);
             
-            if (i % 5 === 0 || i === files.length - 1) {
-                process.stdout.write(`\rConverting frame ${i + 1}/${files.length}`);
-            }
+            const progress = (i + 1) / files.length;
+            progressBar.update(progress, `Converting frames `);
         }
         
-        console.log('\nFrame conversion completed');
+        progressBar.clear();
+        console.log('✓ Frame conversion completed');
         return frameData;
     }
 
     async loadVideo(videoPath) {
         console.log('Loading video:', videoPath);
+        
         const framesDir = await this.extractFrames(videoPath);
         
         this.frames = await this.convertFramesToArt(framesDir);
@@ -174,7 +190,7 @@ class VideoPlayer {
             console.log('Note: Could not clean up temporary frames');
         }
         
-        console.log(`Video loaded: ${this.frames.length} frames at ${this.fps} FPS`);
+        console.log(`✓ Video loaded: ${this.frames.length} frames at ${this.fps} FPS`);
     }
 
     play() {
@@ -204,7 +220,6 @@ class VideoPlayer {
         
         playNextFrame();
         
-        // Set up controls
         this.setupControls();
     }
 
