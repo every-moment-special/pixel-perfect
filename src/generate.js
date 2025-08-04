@@ -144,4 +144,8 @@ async function run() {
     await generator.generate(imagePath, sizeX, sizeY);
 }
 
-run();
+if (require.main === module) {
+    run();
+}
+
+module.exports = { Generator };

@@ -4,7 +4,8 @@
     "main": "src/generate.js",
     "scripts": {
         "gen": "node src/generate.js",
-        "see": "node src/display.js"
+        "see": "node src/display.js",
+        "play": "node src/play.js"
     },
     "dependencies": {
         "sharp": "^0.34.3"
