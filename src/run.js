@@ -23,6 +23,12 @@ class TerminalGUI {
             output: process.stdout
         });
         
+        // Mouse click tracking
+        this.lastClickTime = 0;
+        this.lastClickTarget = null;
+        this.doubleClickThreshold = 500; // milliseconds
+        this.mouseEnabled = false;
+        
         process.stdout.write('\x1b[?25l');
         
         process.stdout.on('resize', () => {
@@ -198,7 +204,7 @@ class TerminalGUI {
         
         console.log('\x1b[36m' + topBorder + '\x1b[0m');
         
-        const navText = 'Navigation: ↑/↓ Select  Enter: Open  B: Back  Q: Quit  R: Refresh';
+        const navText = 'Navigation: ↑/↓ Select  Mouse: Click  Double-Click: Open  Backspace: Back  Q: Quit  R: Refresh';
         const navPadding = Math.floor((this.terminalWidth - 2 - navText.length) / 2);
         const navLine = '║' + ' '.repeat(navPadding) + '\x1b[90m' + navText + '\x1b[0m' + ' '.repeat(this.terminalWidth - 2 - navText.length - navPadding) + '║';
         console.log('\x1b[36m' + navLine + '\x1b[0m');
@@ -273,6 +279,9 @@ class TerminalGUI {
         process.stdin.resume();
         process.stdin.setEncoding('utf8');
 
+        process.stdout.write('\x1b[?1000h');
+        this.mouseEnabled = true;
+
         process.stdin.on('data', (key) => {
             if (key === '\u0003') { // Ctrl+C
                 this.quit();
@@ -283,13 +292,81 @@ class TerminalGUI {
             } else if (key === '\u001b[B') { // Down arrow
                 this.moveSelection(1);
             } else if (key === '\r' || key === '\n') { // Enter
-                this.viewSelectedFile();
+                this.handleEnterKey();
             } else if (key === 'r' || key === 'R') {
                 this.refresh();
-            } else if (key === 'b' || key === 'B') {
+            } else if (key === '\u0008' || key === '\u007f') { // Backspace
                 this.goBack();
+            } else if (key.startsWith('\x1b[M')) { // Mouse event
+                this.handleMouseEvent(key);
             }
         });
+    }
+
+    handleMouseEvent(data) {
+        const button = data.charCodeAt(3) - 32;
+        const x = data.charCodeAt(4) - 32;
+        const y = data.charCodeAt(5) - 32;
+        
+        const adjustedY = y - 1;
+        const headerHeight = 5;
+        
+        if (button === 0 && adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
+            const listIndex = adjustedY - headerHeight + this.scrollOffset;
+            
+            if (listIndex >= 0 && listIndex < this.files.length) {
+                this.selectedIndex = listIndex;
+                this.render();
+                
+                this.handleMouseClick();
+            }
+        }
+    }
+
+    handleMouseClick() {
+        if (this.files.length === 0) return;
+        
+        const selectedItem = this.files[this.selectedIndex];
+        const currentTime = Date.now();
+        
+        if (this.lastClickTarget === selectedItem.path && 
+            (currentTime - this.lastClickTime) < this.doubleClickThreshold) {
+            this.lastClickTime = 0;
+            this.lastClickTarget = null;
+            
+            if (selectedItem.type === 'directory') {
+                this.navigateToDirectory(selectedItem.path);
+            } else {
+                this.viewSelectedFile();
+            }
+        } else {
+            this.lastClickTime = currentTime;
+            this.lastClickTarget = selectedItem.path;
+        }
+    }
+
+    handleEnterKey() {
+        if (this.files.length === 0) return;
+        
+        const selectedItem = this.files[this.selectedIndex];
+        const currentTime = Date.now();
+        
+        if (this.lastClickTarget === selectedItem.path && 
+            (currentTime - this.lastClickTime) < this.doubleClickThreshold) {
+            this.lastClickTime = 0;
+            this.lastClickTarget = null;
+            
+            if (selectedItem.type === 'directory') {
+                this.navigateToDirectory(selectedItem.path);
+            } else {
+                this.viewSelectedFile();
+            }
+        } else {
+            this.lastClickTime = currentTime;
+            this.lastClickTarget = selectedItem.path;
+            
+            this.render();
+        }
     }
 
     goBack() {
@@ -304,6 +381,9 @@ class TerminalGUI {
     }
 
     quit() {
+        if (this.mouseEnabled) {
+            process.stdout.write('\x1b[?1000l');
+        }
         process.stdout.write('\x1b[?25h');
         process.stdin.setRawMode(false);
         this.rl.close();
@@ -322,6 +402,9 @@ class TerminalGUI {
         });
         
         process.on('SIGINT', () => {
+            if (this.mouseEnabled) {
+                process.stdout.write('\x1b[?1000l');
+            }
             process.stdout.write('\x1b[?25h');
             process.exit(0);
         });
