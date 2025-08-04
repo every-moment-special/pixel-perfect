@@ -4,6 +4,11 @@ const { spawn } = require('child_process');
 const { display } = require('./display');
 const sharp = require('sharp');
 
+const CONFIG = {
+    maxCells: process.env.MAX_CELLS ? parseInt(process.env.MAX_CELLS) : 200000,
+    maxCellsVideo: process.env.MAX_CELLS_VIDEO ? parseInt(process.env.MAX_CELLS_VIDEO) : 100000
+};
+
 class VideoPlayer {
     constructor() {
         this.frames = [];
@@ -89,7 +94,27 @@ class VideoPlayer {
             const image = sharp(framePath);
             const metadata = await image.metadata();
             const aspectRatio = metadata.width / metadata.height;
-            const sizeY = Math.round(sizeX / aspectRatio);
+            let sizeY = Math.round(sizeX / aspectRatio);
+
+            const maxCellsForVideo = CONFIG.maxCellsVideo;
+            const maxWidth = Math.sqrt(maxCellsForVideo * 2);
+            const maxHeight = maxWidth;
+            
+            const estimatedCells = sizeX * Math.ceil(sizeY / 2);
+            if (estimatedCells > maxCellsForVideo) {
+                console.log(`Warning: Video frame size (${sizeX}x${sizeY}) would create ~${estimatedCells} cells, exceeding limit of ${maxCellsForVideo}`);
+                console.log(`Scaling down video frames to fit within limits...`);
+                
+                if (aspectRatio > 1) {
+                    const newSizeX = Math.floor(maxWidth);
+                    sizeY = Math.floor(newSizeX / aspectRatio);
+                } else {
+                    const newSizeY = Math.floor(maxHeight);
+                    sizeY = Math.floor(newSizeY);
+                }
+                
+                console.log(`Video frames scaled to: ${sizeX}x${sizeY}`);
+            }
 
             const fullSizeImage = await image.resize(sizeX, sizeY).raw().toBuffer({ resolveWithObject: true });
             
@@ -99,7 +124,7 @@ class VideoPlayer {
             const channels = info.channels;
             const cells = [];
 
-            const maxCells = 50000;
+            const maxCells = CONFIG.maxCells;
             let cellCount = 0;
 
             for (let y = 0; y < height - 1; y += 2) {
