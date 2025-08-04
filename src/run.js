@@ -23,11 +23,12 @@ class TerminalGUI {
             output: process.stdout
         });
         
-        // Mouse click tracking
         this.lastClickTime = 0;
         this.lastClickTarget = null;
-        this.doubleClickThreshold = 500; // milliseconds
+        this.doubleClickThreshold = 500;
         this.mouseEnabled = false;
+        
+        this.disableMouse = process.argv.includes('--no-mouse');
         
         process.stdout.write('\x1b[?25l');
         
@@ -204,9 +205,21 @@ class TerminalGUI {
         
         console.log('\x1b[36m' + topBorder + '\x1b[0m');
         
-        const navText = 'Navigation: ↑/↓ Select  Mouse: Click  Double-Click: Open  Backspace: Back  Q: Quit  R: Refresh';
+        let navText;
+        if (this.mouseEnabled) {
+            navText = 'Navigation: ↑/↓ Select  Mouse: Click  Double-Click: Open  Backspace: Back  Q: Quit  R: Refresh';
+        } else {
+            navText = 'Navigation: ↑/↓ Select  Enter: Open  Backspace: Back  Q: Quit  R: Refresh';
+        }
+        
+        const maxTextLength = this.terminalWidth - 4;
+        if (navText.length > maxTextLength) {
+            navText = navText.substring(0, maxTextLength - 3) + '...';
+        }
+        
         const navPadding = Math.floor((this.terminalWidth - 2 - navText.length) / 2);
-        const navLine = '║' + ' '.repeat(navPadding) + '\x1b[90m' + navText + '\x1b[0m' + ' '.repeat(this.terminalWidth - 2 - navText.length - navPadding) + '║';
+        const remainingSpace = this.terminalWidth - 2 - navText.length - navPadding;
+        const navLine = '║' + ' '.repeat(Math.max(0, navPadding)) + '\x1b[90m' + navText + '\x1b[0m' + ' '.repeat(Math.max(0, remainingSpace)) + '║';
         console.log('\x1b[36m' + navLine + '\x1b[0m');
         
         console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
@@ -279,8 +292,10 @@ class TerminalGUI {
         process.stdin.resume();
         process.stdin.setEncoding('utf8');
 
-        process.stdout.write('\x1b[?1000h');
-        this.mouseEnabled = true;
+        if (!this.disableMouse) {
+            process.stdout.write('\x1b[?1000h');
+            this.mouseEnabled = true;
+        }
 
         process.stdin.on('data', (key) => {
             if (key === '\u0003') { // Ctrl+C
@@ -297,29 +312,56 @@ class TerminalGUI {
                 this.refresh();
             } else if (key === '\u0008' || key === '\u007f') { // Backspace
                 this.goBack();
-            } else if (key.startsWith('\x1b[M')) { // Mouse event
+            } else if (this.mouseEnabled && key.startsWith('\x1b[M')) { // Mouse event
                 this.handleMouseEvent(key);
+            } else if (this.mouseEnabled && key.startsWith('\x1b[') && key.includes('M')) {
+                // Alternative mouse event format
+                this.handleMouseEvent(key);
+            } else if (this.mouseEnabled && key.length > 1 && key.charCodeAt(0) === 27) {
+                // Ignore unrecognized escape sequences silently
             }
         });
     }
 
     handleMouseEvent(data) {
-        const button = data.charCodeAt(3) - 32;
-        const x = data.charCodeAt(4) - 32;
-        const y = data.charCodeAt(5) - 32;
-        
-        const adjustedY = y - 1;
-        const headerHeight = 5;
-        
-        if (button === 0 && adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
-            const listIndex = adjustedY - headerHeight + this.scrollOffset;
+        try {
+            let button, x, y;
             
-            if (listIndex >= 0 && listIndex < this.files.length) {
-                this.selectedIndex = listIndex;
-                this.render();
-                
-                this.handleMouseClick();
+            if (data.startsWith('\x1b[M')) {
+                button = data.charCodeAt(3) - 32;
+                x = data.charCodeAt(4) - 32;
+                y = data.charCodeAt(5) - 32;
+            } else if (data.startsWith('\x1b[') && data.includes('M')) {
+                const parts = data.slice(2, -1).split(';');
+                if (parts.length >= 3) {
+                    button = parseInt(parts[0]) - 32;
+                    x = parseInt(parts[1]) - 32;
+                    y = parseInt(parts[2]) - 32;
+                } else {
+                    return;
+                }
+            } else {
+                return;
             }
+            
+            const adjustedY = y - 1;
+            const headerHeight = 5;
+            
+            if ((button === 0 || button === 3) && adjustedY >= headerHeight && adjustedY < headerHeight + this.maxDisplayLines) {
+                const listIndex = adjustedY - headerHeight + this.scrollOffset;
+                
+                if (listIndex >= 0 && listIndex < this.files.length) {
+                    this.selectedIndex = listIndex;
+                    this.render();
+                    
+                    if (button === 3) {
+                        this.handleMouseClick();
+                    }
+                }
+            }
+        } catch (error) {
+            console.log(`\nMouse event parsing error: ${error.message}`);
+            this.render();
         }
     }
 
