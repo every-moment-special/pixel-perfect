@@ -148,9 +148,10 @@ class TerminalGUI {
         
         if (filename) {
             const displayName = filename.length > itemWidth - 2 ? filename.substring(0, itemWidth - 5) + '...' : filename;
-            const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length));
+            const leftPadding = Math.floor((itemWidth - displayName.length) / 2);
+            const rightPadding = itemWidth - displayName.length - leftPadding;
             const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[90m';
-            lines.push(`${color}${displayName}${padding}\x1b[0m`);
+            lines.push(`${color}${' '.repeat(leftPadding)}${displayName}${' '.repeat(rightPadding)}\x1b[0m`);
         }
         
         return lines;
