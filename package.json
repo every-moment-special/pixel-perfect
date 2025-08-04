@@ -3,9 +3,9 @@
     "version": "1.0.0",
     "main": "src/generate.js",
     "scripts": {
-        "gen": "node src/generate.js",
-        "see": "node src/display.js",
-        "play": "node src/play.js"
+        "gen": "node --max-old-space-size=4096 src/generate.js",
+        "see": "node --max-old-space-size=2048 src/display.js",
+        "play": "node --max-old-space-size=8192 src/play.js"
     },
     "dependencies": {
         "sharp": "^0.34.3"
