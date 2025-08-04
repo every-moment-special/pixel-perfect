@@ -6,17 +6,22 @@ const sharp = require('sharp');
 
 const CONFIG = {
     maxCells: process.env.MAX_CELLS ? parseInt(process.env.MAX_CELLS) : 200000,
-    maxCellsVideo: process.env.MAX_CELLS_VIDEO ? parseInt(process.env.MAX_CELLS_VIDEO) : 100000
+    maxCellsVideo: process.env.MAX_CELLS_VIDEO ? parseInt(process.env.MAX_CELLS_VIDEO) : 100000,
+    maxCacheSize: process.env.MAX_CACHE_SIZE ? parseInt(process.env.MAX_CACHE_SIZE) : 10,
+    fps: process.env.VIDEO_FPS ? parseInt(process.env.VIDEO_FPS) : 10
 };
 
 class VideoPlayer {
     constructor() {
-        this.frames = [];
+        this.framesDir = null;
+        this.frameFiles = [];
         this.currentFrame = 0;
         this.isPlaying = false;
-        this.fps = 10;
+        this.fps = CONFIG.fps;
         this.frameInterval = null;
         this.cursorHidden = false;
+        this.frameCache = new Map();
+        this.maxCacheSize = CONFIG.maxCacheSize;
     }
 
     createProgressBar(width = 40) {
@@ -182,43 +187,50 @@ class VideoPlayer {
             .filter(file => file.endsWith('.png'))
             .sort();
 
-        console.log(`Converting ${files.length} frames to terminal art...`);
+        console.log(`Found ${files.length} frames. Will load on-demand to save memory.`);
         
-        const progressBar = this.createProgressBar();
-        const frameData = [];
+        this.framesDir = framesDir;
+        this.frameFiles = files;
         
-        for (let i = 0; i < files.length; i++) {
-            const framePath = path.join(framesDir, files[i]);
-            const artData = await this.convertFrameToArt(framePath);
-            frameData.push(artData);
-            
-            const progress = (i + 1) / files.length;
-            progressBar.update(progress, `Converting frames `);
+        return files.length;
+    }
+
+    async loadFrame(frameIndex) {
+        if (frameIndex < 0 || frameIndex >= this.frameFiles.length) {
+            return null;
+        }
+
+        if (this.frameCache.has(frameIndex)) {
+            return this.frameCache.get(frameIndex);
+        }
+
+        const framePath = path.join(this.framesDir, this.frameFiles[frameIndex]);
+        const artData = await this.convertFrameToArt(framePath);
+        
+        this.frameCache.set(frameIndex, artData);
+        
+        if (this.frameCache.size > this.maxCacheSize) {
+            const firstKey = this.frameCache.keys().next().value;
+            this.frameCache.delete(firstKey);
         }
         
-        progressBar.clear();
-        console.log('✓ Frame conversion completed');
-        return frameData;
+        return artData;
     }
 
     async loadVideo(videoPath) {
         console.log('Loading video:', videoPath);
+        this.logMemoryUsage('Before loading');
         
         const framesDir = await this.extractFrames(videoPath);
         
-        this.frames = await this.convertFramesToArt(framesDir);
+        const frameCount = await this.convertFramesToArt(framesDir);
         
-        try {
-            fs.rmSync(framesDir, { recursive: true, force: true });
-        } catch (error) {
-            console.log('Note: Could not clean up temporary frames');
-        }
-        
-        console.log(`✓ Video loaded: ${this.frames.length} frames at ${this.fps} FPS`);
+        console.log(`✓ Video loaded: ${frameCount} frames at ${this.fps} FPS (on-demand loading)`);
+        this.logMemoryUsage('After loading');
     }
 
-    play() {
-        if (this.frames.length === 0) {
+    async play() {
+        if (this.frameFiles.length === 0) {
             console.log('No video loaded');
             return;
         }
@@ -228,15 +240,19 @@ class VideoPlayer {
         
         this.hideCursor();
         
-        const playNextFrame = () => {
+        const playNextFrame = async () => {
             if (!this.isPlaying) return;
             
-            if (this.currentFrame >= this.frames.length) {
+            if (this.currentFrame >= this.frameFiles.length) {
                 this.currentFrame = 0;
             }
             
-            process.stdout.write('\x1b[2J\x1b[H');
-            display(this.frames[this.currentFrame]);
+            const frameData = await this.loadFrame(this.currentFrame);
+            if (frameData) {
+                process.stdout.write('\x1b[2J\x1b[H');
+                display(frameData);
+            }
+            
             this.currentFrame++;
             
             this.frameInterval = setTimeout(playNextFrame, 1000 / this.fps);
@@ -255,24 +271,26 @@ class VideoPlayer {
         this.showCursor();
     }
 
-    resume() {
-        if (this.frames.length > 0) {
+    async resume() {
+        if (this.frameFiles.length > 0) {
             this.hideCursor();
-            this.play();
+            await this.play();
         }
     }
 
-    setupControls() {
+    async setupControls() {
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding('utf8');
 
         process.on('exit', () => {
             this.showCursor();
+            this.frameCache.clear();
         });
 
         process.on('SIGINT', () => {
             this.showCursor();
+            this.frameCache.clear();
             process.exit(0);
         });
 
@@ -282,11 +300,12 @@ class VideoPlayer {
         console.log('  b - Rewind 5 frames');
         console.log('  q - Quit');
 
-        process.stdin.on('data', (key) => {
+        process.stdin.on('data', async (key) => {
             switch (key) {
                 case 'q':
                     this.pause();
                     this.showCursor();
+                    this.frameCache.clear();
                     process.stdout.write('\x1b[2J\x1b[H');
                     process.stdin.setRawMode(false);
                     process.stdin.pause();
@@ -298,27 +317,48 @@ class VideoPlayer {
                         this.pause();
                         console.log('\nPaused - Press space to resume, q to quit');
                     } else {
-                        this.resume();
+                        await this.resume();
                     }
                     break;
                 case 'f':
                     // Fast forward
-                    this.currentFrame = Math.min(this.currentFrame + 5, this.frames.length - 1);
-                    if (this.frames.length > 0) {
-                        process.stdout.write('\x1b[2J\x1b[H');
-                        display(this.frames[this.currentFrame]);
+                    this.currentFrame = Math.min(this.currentFrame + 5, this.frameFiles.length - 1);
+                    if (this.frameFiles.length > 0) {
+                        const frameData = await this.loadFrame(this.currentFrame);
+                        if (frameData) {
+                            process.stdout.write('\x1b[2J\x1b[H');
+                            display(frameData);
+                        }
                     }
                     break;
                 case 'b':
                     // Rewind
                     this.currentFrame = Math.max(this.currentFrame - 5, 0);
-                    if (this.frames.length > 0) {
-                        process.stdout.write('\x1b[2J\x1b[H');
-                        display(this.frames[this.currentFrame]);
+                    if (this.frameFiles.length > 0) {
+                        const frameData = await this.loadFrame(this.currentFrame);
+                        if (frameData) {
+                            process.stdout.write('\x1b[2J\x1b[H');
+                            display(frameData);
+                        }
                     }
                     break;
             }
         });
+    }
+
+    getMemoryUsage() {
+        const usage = process.memoryUsage();
+        return {
+            rss: Math.round(usage.rss / 1024 / 1024), // MB
+            heapUsed: Math.round(usage.heapUsed / 1024 / 1024), // MB
+            heapTotal: Math.round(usage.heapTotal / 1024 / 1024), // MB
+            external: Math.round(usage.external / 1024 / 1024) // MB
+        };
+    }
+
+    logMemoryUsage(label = '') {
+        const mem = this.getMemoryUsage();
+        console.log(`${label} Memory: RSS=${mem.rss}MB, Heap=${mem.heapUsed}/${mem.heapTotal}MB, External=${mem.external}MB`);
     }
 }
 
@@ -341,7 +381,7 @@ async function run() {
     
     try {
         await player.loadVideo(videoPath);
-        player.play();
+        await player.play();
     } catch (error) {
         console.error('Error playing video:', error.message);
         process.exit(1);
