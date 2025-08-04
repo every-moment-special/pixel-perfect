@@ -5,6 +5,7 @@
     "scripts": {
         "gen": "node --max-old-space-size=4096 src/generate.js",
         "see": "node --max-old-space-size=2048 src/display.js",
+        "view": "node --max-old-space-size=2048 src/view.js",
         "play": "node --max-old-space-size=8192 src/play.js"
     },
     "dependencies": {
