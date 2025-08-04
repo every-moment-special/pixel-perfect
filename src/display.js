@@ -1,13 +1,10 @@
 const fs = require('fs');
-const path = require('path');
 
 const display = (data) => {
     process.stdout.write('\x1b[2J\x1b[H');
     
-    // Handle both old and new compressed formats
     let cells;
     if (data.t && data.d) {
-        // New compressed format
         const ansiTable = data.t;
         cells = data.d.map(cell => ({
             x: cell[0],
@@ -16,12 +13,11 @@ const display = (data) => {
             ansi: ansiTable[cell[3]] || ''
         }));
     } else {
-        // Old format - direct array of objects
         cells = data;
     }
     
-    const maxY = Math.max(...cells.map(cell => cell.y));
-    const maxX = Math.max(...cells.map(cell => cell.x));
+    const maxY = cells.reduce((max, cell) => Math.max(max, cell.y), 0);
+    const maxX = cells.reduce((max, cell) => Math.max(max, cell.x), 0);
     const display = Array(maxY + 1).fill().map(() => Array(maxX + 1).fill(' '));
     
     cells.forEach(cell => {

@@ -1,7 +1,12 @@
+const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const sharp = require('sharp');
-const { display } = require('./display');
+const { display } = require('./display.js');
+
+const CONFIG = {
+    maxCells: process.env.MAX_CELLS ? parseInt(process.env.MAX_CELLS) : 200000,
+    maxCellsVideo: process.env.MAX_CELLS_VIDEO ? parseInt(process.env.MAX_CELLS_VIDEO) : 100000
+};
 
 class Generator {
     async getImageDimensions(imagePath) {
@@ -30,6 +35,27 @@ class Generator {
             finalSizeY = Math.round(process.stdout.columns / aspectRatio);
         }
         
+        const maxCells = CONFIG.maxCells;
+        const maxWidth = Math.sqrt(maxCells * 2);
+        const maxHeight = maxWidth;
+        
+        const estimatedCells = finalSizeX * Math.ceil(finalSizeY / 2);
+        if (estimatedCells > maxCells) {
+            console.log(`Warning: Requested size (${finalSizeX}x${finalSizeY}) would create ~${estimatedCells} cells, exceeding limit of ${maxCells}`);
+            console.log(`Scaling down to fit within limits...`);
+            
+            const aspectRatio = finalSizeX / finalSizeY;
+            if (aspectRatio > 1) {
+                finalSizeX = Math.floor(maxWidth);
+                finalSizeY = Math.floor(finalSizeX / aspectRatio);
+            } else {
+                finalSizeY = Math.floor(maxHeight);
+                finalSizeX = Math.floor(finalSizeY * aspectRatio);
+            }
+            
+            console.log(`Scaled to: ${finalSizeX}x${finalSizeY}`);
+        }
+        
         const image = sharp(imagePath);
         const fullSizeImage = await image.resize(finalSizeX, finalSizeY).raw().toBuffer({ resolveWithObject: true });
         const fullSizeData = await this.imageToData(fullSizeImage);
@@ -45,7 +71,7 @@ class Generator {
         const channels = info.channels;
         const cells = [];
 
-        const maxCells = 100000;
+        const maxCells = CONFIG.maxCells;
         let cellCount = 0;
 
         for (let y = 0; y < height - 1; y += 2) {
