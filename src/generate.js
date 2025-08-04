@@ -95,29 +95,34 @@ class Generator {
     }
 
     save(data, originalImagePath) {
-        const chunkSize = 1000;
         const outputPath = path.join('src', 'assets', path.basename(originalImagePath, path.extname(originalImagePath)) + '.json');
-        const writeStream = fs.createWriteStream(outputPath);
-        writeStream.write('[\n');
-
-        for (let i = 0; i < data.length; i += chunkSize) {
-            const chunk = data.slice(i, i + chunkSize);
-            const chunkCode = chunk.map((cell, index) => {
-                const escapedAnsi = JSON.stringify(cell.ansi).slice(1, -1);
-                const isLastInChunk = index === chunk.length - 1;
-                const isLastChunk = i + chunkSize >= data.length;
-                const comma = (isLastInChunk && isLastChunk) ? '' : ',';
-                const line = `{ "x": ${cell.x}, "y": ${cell.y}, "char": "${cell.char}", "ansi": "${escapedAnsi}" }${comma}`;
-                
-                return line;
-            }).join('\n');
-            writeStream.write(chunkCode + '\n');
-        }
         
-        writeStream.write(']\n');
-        writeStream.end();
+        const ansiLookup = new Map();
+        const ansiTable = [];
+        let ansiIndex = 0;
         
-        console.log(`Data saved to: ${outputPath}`);
+        const compressedData = data.map(cell => {
+            let ansiCode = cell.ansi;
+            let ansiRef = 0;
+            
+            if (ansiCode) {
+                if (!ansiLookup.has(ansiCode)) {
+                    ansiLookup.set(ansiCode, ansiIndex);
+                    ansiTable.push(ansiCode);
+                    ansiIndex++;
+                }
+                ansiRef = ansiLookup.get(ansiCode);
+            }
+            
+            return [cell.x, cell.y, cell.char, ansiRef];
+        });
+        
+        const compressedJson = {
+            t: ansiTable,
+            d: compressedData
+        };
+        
+        fs.writeFileSync(outputPath, JSON.stringify(compressedJson));
     }
 }
 

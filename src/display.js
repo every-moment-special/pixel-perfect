@@ -4,11 +4,27 @@ const path = require('path');
 const display = (data) => {
     process.stdout.write('\x1b[2J\x1b[H');
     
-    const maxY = Math.max(...data.map(cell => cell.y));
-    const maxX = Math.max(...data.map(cell => cell.x));
+    // Handle both old and new compressed formats
+    let cells;
+    if (data.t && data.d) {
+        // New compressed format
+        const ansiTable = data.t;
+        cells = data.d.map(cell => ({
+            x: cell[0],
+            y: cell[1],
+            char: cell[2],
+            ansi: ansiTable[cell[3]] || ''
+        }));
+    } else {
+        // Old format - direct array of objects
+        cells = data;
+    }
+    
+    const maxY = Math.max(...cells.map(cell => cell.y));
+    const maxX = Math.max(...cells.map(cell => cell.x));
     const display = Array(maxY + 1).fill().map(() => Array(maxX + 1).fill(' '));
     
-    data.forEach(cell => {
+    cells.forEach(cell => {
         if (cell.y < display.length && cell.x < display[0].length) {
             display[cell.y][cell.x] = cell.ansi + cell.char + '\x1b[0m';
         }
@@ -48,22 +64,24 @@ if (require.main === module) {
         const fileContent = fs.readFileSync(dataPath, 'utf8');
         
         if (dataPath.endsWith('.json')) {
-            // Handle JavaScript object syntax in .json files (from generate.js)
-            // Convert JavaScript object syntax to valid JSON
-            const jsonString = fileContent
-                .replace(/(\w+):/g, '"$1":')  // Quote property names
-                .replace(/'/g, '"');           // Replace single quotes with double quotes
-            
-            const data = JSON.parse(jsonString);
+            let data;
+            try {
+                data = JSON.parse(fileContent);
+            } catch (parseError) {
+                const jsonString = fileContent
+                    .replace(/(\w+):/g, '"$1":')
+                    .replace(/'/g, '"');
+                
+                data = JSON.parse(jsonString);
+            }
             display(data);
         } else {
-            // Try to parse as regular JSON
             const data = JSON.parse(fileContent);
             display(data);
         }
     } catch (error) {
         console.error('Error reading file:', error.message);
-        console.log('Expected format: JSON or JavaScript object syntax');
+        console.log('Expected format: JSON');
         process.exit(1);
     }
 }
