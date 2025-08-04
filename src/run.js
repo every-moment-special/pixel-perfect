@@ -133,24 +133,15 @@ class TerminalGUI {
             }
         });
         
-        if (isSelected) {
-            for (let i = 0; i < Math.min(3, itemWidth); i++) {
-                if (grid[0][i] === ' ') {
-                    grid[0][i] = '\x1b[1m\x1b[36m▶\x1b[0m';
-                    break;
-                }
-            }
-        }
-        
         for (let y = 0; y < maxHeight; y++) {
             lines.push(grid[y].join(''));
         }
         
         if (filename) {
             const displayName = filename.length > itemWidth - 2 ? filename.substring(0, itemWidth - 5) + '...' : filename;
+            const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[90m';
             const leftPadding = Math.floor((itemWidth - displayName.length) / 2);
             const rightPadding = itemWidth - displayName.length - leftPadding;
-            const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[90m';
             lines.push(`${color}${' '.repeat(leftPadding)}${displayName}${' '.repeat(rightPadding)}\x1b[0m`);
         }
         
@@ -317,7 +308,7 @@ class TerminalGUI {
         
         const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
         const baseItemWidth = Math.floor(availableWidth / columns);
-        const itemHeight = 17; // Height for 32x32 thumbnail (16 rows) + 1 row for filename
+        const itemHeight = 17; // Height for 32x32 thumbnail (16 rows) + 1 row for filename + 1 row for arrow
         
         for (let row = 0; row < Math.min(rows, this.maxDisplayLines); row++) {
             // Process each column in the current row
@@ -496,7 +487,6 @@ class TerminalGUI {
         if (newIndex !== this.selectedIndex && newIndex >= 0 && newIndex < this.files.length) {
             this.selectedIndex = newIndex;
             
-            const currentRow = Math.floor(this.selectedIndex / columns);
             const maxVisibleRows = this.maxDisplayLines;
             const currentVisibleRow = Math.floor((this.selectedIndex - this.scrollOffset) / columns);
             
