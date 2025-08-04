@@ -60,8 +60,7 @@ class Generator {
         const fullSizeImage = await image.resize(finalSizeX, finalSizeY).raw().toBuffer({ resolveWithObject: true });
         const fullSizeData = await this.imageToData(fullSizeImage);
         
-        display(fullSizeData);
-        this.save(fullSizeData, imagePath);
+        return fullSizeData;
     }
 
     async imageToData(imageData) {
@@ -167,7 +166,11 @@ async function run() {
     const sizeY = args[2] ? parseInt(args[2]) : null;
     
     const generator = new Generator();
-    await generator.generate(imagePath, sizeX, sizeY);
+    const data = await generator.generate(imagePath, sizeX, sizeY);
+
+    generator.save(data, imagePath);
+
+    display(data);
 }
 
 if (require.main === module) {
