@@ -14,7 +14,6 @@ class VideoPlayer {
         this.cursorHidden = false;
     }
 
-    // Progress bar utilities
     createProgressBar(width = 40) {
         return {
             width,
