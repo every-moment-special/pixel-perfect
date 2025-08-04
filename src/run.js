@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { Generator } = require('./generate');
+const { display } = require('./display');
+const sharp = require('sharp');
 
 const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga'];
 
@@ -31,15 +34,19 @@ class TerminalGUI {
         
         this.disableMouse = process.argv.includes('--no-mouse');
         
+        // Thumbnail cache
+        this.thumbnailCache = new Map();
+        this.generator = new Generator();
+        
         process.stdout.write('\x1b[?25l');
         
-        process.stdout.on('resize', () => {
+        process.stdout.on('resize', async () => {
             this.terminalWidth = process.stdout.columns || 80;
             this.terminalHeight = process.stdout.rows || 24;
             this.terminalWidth = Math.max(this.terminalWidth, 40);
             this.terminalHeight = Math.max(this.terminalHeight, 15);
             this.maxDisplayLines = Math.max(1, this.terminalHeight - 8);
-            this.render();
+            await this.render();
         });
     }
 
@@ -95,11 +102,101 @@ class TerminalGUI {
         return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
     }
 
+    async generateThumbnail(imagePath) {
+        if (this.thumbnailCache.has(imagePath)) {
+            return this.thumbnailCache.get(imagePath);
+        }
+
+        try {
+            const thumbnailData = await this.generator.generate(imagePath, 32, 32);
+            this.thumbnailCache.set(imagePath, thumbnailData);
+            return thumbnailData;
+        } catch (error) {
+            console.error(`Error generating thumbnail for ${imagePath}: ${error.message}`);
+            return null;
+        }
+    }
+
+    renderThumbnail(thumbnailData, itemWidth, isSelected, filename) {
+        const lines = [];
+        const maxHeight = 16;
+        
+        const grid = Array(maxHeight).fill().map(() => Array(itemWidth).fill(' '));
+        
+        const thumbnailWidth = Math.min(32, itemWidth - 2);
+        const startX = Math.floor((itemWidth - thumbnailWidth) / 2);
+        
+        thumbnailData.forEach(cell => {
+            const adjustedX = cell.x + startX;
+            if (cell.y < maxHeight && adjustedX < itemWidth) {
+                grid[cell.y][adjustedX] = cell.ansi + cell.char + '\x1b[0m';
+            }
+        });
+        
+        if (isSelected) {
+            for (let i = 0; i < Math.min(3, itemWidth); i++) {
+                if (grid[0][i] === ' ') {
+                    grid[0][i] = '\x1b[1m\x1b[36m▶\x1b[0m';
+                    break;
+                }
+            }
+        }
+        
+        for (let y = 0; y < maxHeight; y++) {
+            lines.push(grid[y].join(''));
+        }
+        
+        if (filename) {
+            const displayName = filename.length > itemWidth - 2 ? filename.substring(0, itemWidth - 5) + '...' : filename;
+            const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length));
+            const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[90m';
+            lines.push(`${color}${displayName}${padding}\x1b[0m`);
+        }
+        
+        return lines;
+    }
+
+    renderGridRow(rowItems, itemHeight, gapWidth) {
+        for (let lineIndex = 0; lineIndex < itemHeight; lineIndex++) {
+            let line = '';
+            
+            for (let i = 0; i < rowItems.length; i++) {
+                const item = rowItems[i];
+                
+                if (item.type === 'empty') {
+                    line += ' '.repeat(item.width);
+                } else if (item.type === 'image') {
+                    if (lineIndex < item.content.length) {
+                        line += item.content[lineIndex];
+                    } else {
+                        line += ' '.repeat(item.width);
+                    }
+                } else {
+                    if (lineIndex === 0) {
+                        line += item.content;
+                    } else {
+                        line += ' '.repeat(item.width);
+                    }
+                }
+                
+                if (i < rowItems.length - 1) {
+                    line += ' '.repeat(gapWidth);
+                }
+            }
+            
+            console.log(line);
+        }
+    }
+
     calculateGridDimensions() {
-        const minItemWidth = 20;
-        const columns = Math.floor((this.terminalWidth - 2) / minItemWidth);
+        const gapWidth = 2;
+        const availableWidth = this.terminalWidth - 2;
+        
+        const minImageWidth = 32;
+        
+        const columns = Math.floor(availableWidth / (minImageWidth + gapWidth));
         const rows = Math.ceil(this.files.length / columns);
-        return { columns: Math.max(1, columns), rows };
+        return { columns: Math.max(1, columns), rows, gapWidth };
     }
 
     clearScreen() {
@@ -134,9 +231,9 @@ class TerminalGUI {
         console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
     }
 
-    drawFileList() {
+    async drawFileList() {
         if (this.viewMode === 'grid') {
-            this.drawGridView();
+            await this.drawGridView();
         } else {
             this.drawListView();
         }
@@ -212,43 +309,101 @@ class TerminalGUI {
         }
     }
 
-    drawGridView() {
-        const { columns, rows } = this.calculateGridDimensions();
-        const itemWidth = Math.floor((this.terminalWidth - 2) / columns);
+    async drawGridView() {
+        const { columns, rows, gapWidth } = this.calculateGridDimensions();
+        const minImageWidth = 32;
+        const minOtherWidth = 20;
+        
+        const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
+        const baseItemWidth = Math.floor(availableWidth / columns);
+        const itemHeight = 17; // Height for 32x32 thumbnail (16 rows) + 1 row for filename
         
         for (let row = 0; row < Math.min(rows, this.maxDisplayLines); row++) {
-            let line = '';
-            
+            // Process each column in the current row
+            const rowItems = [];
             for (let col = 0; col < columns; col++) {
                 const index = row * columns + col + this.scrollOffset;
                 
                 if (index >= this.files.length) {
-                    line += ' '.repeat(itemWidth);
+                    rowItems.push({ type: 'empty', width: baseItemWidth });
                     continue;
                 }
                 
                 const item = this.files[index];
                 const isSelected = index === this.selectedIndex;
-                const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
                 
-                let itemText = '';
                 if (item.type === 'directory') {
-                    itemText = `📁 ${item.name}`;
+                    const itemWidth = Math.max(minOtherWidth, baseItemWidth);
+                    const icon = '📁';
+                    const name = item.name;
+                    const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
+                    const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
+                    const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
+                    const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
+                    
+                    rowItems.push({
+                        type: 'directory',
+                        content: `${color}${displayText}\x1b[0m`,
+                        width: itemWidth
+                    });
+                } else if (this.isMediaFile(item.name)) {
+                    const itemWidth = Math.max(minImageWidth, baseItemWidth);
+                    try {
+                        const thumbnailData = await this.generateThumbnail(item.path);
+                        if (thumbnailData && thumbnailData.length > 0) {
+                            const thumbnailLines = this.renderThumbnail(thumbnailData, itemWidth, isSelected, item.name);
+                            rowItems.push({
+                                type: 'image',
+                                content: thumbnailLines,
+                                width: itemWidth,
+                                name: item.name
+                            });
+                        } else {
+                            const icon = '📄';
+                            const name = item.name;
+                            const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
+                            const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
+                            const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
+                            const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
+                            
+                            rowItems.push({
+                                type: 'fallback',
+                                content: `${color}${displayText}\x1b[0m`,
+                                width: itemWidth
+                            });
+                        }
+                    } catch (error) {
+                        const icon = '📄';
+                        const name = item.name;
+                        const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
+                        const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
+                        const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
+                        const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
+                        
+                        rowItems.push({
+                            type: 'fallback',
+                            content: `${color}${displayText}\x1b[0m`,
+                            width: itemWidth
+                        });
+                    }
                 } else {
-                    itemText = `📄 ${item.name}`;
+                    const itemWidth = Math.max(minOtherWidth, baseItemWidth);
+                    const icon = '📄';
+                    const name = item.name;
+                    const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
+                    const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
+                    const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
+                    const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
+                    
+                    rowItems.push({
+                        type: 'file',
+                        content: `${color}${displayText}\x1b[0m`,
+                        width: itemWidth
+                    });
                 }
-                
-                if (itemText.length > itemWidth - 2) {
-                    itemText = itemText.substring(0, itemWidth - 5) + '...';
-                }
-                
-                const padding = ' '.repeat(Math.max(0, itemWidth - itemText.length - 2));
-                const displayText = isSelected ? `▶ ${itemText}${padding}` : `  ${itemText}${padding}`;
-                
-                line += `${color}${displayText}\x1b[0m`;
             }
             
-            console.log(line);
+            this.renderGridRow(rowItems, itemHeight, gapWidth);
         }
         
         if (this.files.length > this.maxDisplayLines * columns) {
@@ -291,24 +446,24 @@ class TerminalGUI {
         console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
     }
 
-    render() {
+    async render() {
         this.clearScreen();
         this.drawHeader();
-        this.drawFileList();
+        await this.drawFileList();
         this.drawFooter();
 
         process.stdout.write('\x1b[H');
     }
 
-    moveSelection(direction) {
+    async moveSelection(direction) {
         if (this.viewMode === 'grid') {
-            this.moveSelectionGrid(direction);
+            await this.moveSelectionGrid(direction);
         } else {
-            this.moveSelectionList(direction);
+            await this.moveSelectionList(direction);
         }
     }
 
-    moveSelectionList(direction) {
+    async moveSelectionList(direction) {
         const newIndex = this.selectedIndex + direction;
         if (newIndex >= 0 && newIndex < this.files.length) {
             this.selectedIndex = newIndex;
@@ -319,11 +474,11 @@ class TerminalGUI {
                 this.scrollOffset = this.selectedIndex - this.maxDisplayLines + 1;
             }
             
-            this.render();
+            await this.render();
         }
     }
 
-    moveSelectionGrid(direction) {
+    async moveSelectionGrid(direction) {
         const { columns } = this.calculateGridDimensions();
         let newIndex = this.selectedIndex;
         
@@ -350,7 +505,7 @@ class TerminalGUI {
                 this.scrollOffset = Math.max(0, this.selectedIndex - (maxVisibleRows - 1) * columns);
             }
             
-            this.render();
+            await this.render();
         }
     }
 
@@ -377,25 +532,25 @@ class TerminalGUI {
         }
     }
 
-    navigateToDirectory(dirPath) {
+    async navigateToDirectory(dirPath) {
         this.currentDirectory = dirPath;
         this.selectedIndex = 0;
         this.scrollOffset = 0;
         this.files = this.getMediaFiles();
-        this.render();
+        await this.render();
     }
 
-    refresh() {
+    async refresh() {
         this.files = this.getMediaFiles();
         this.selectedIndex = Math.min(this.selectedIndex, this.files.length - 1);
         this.scrollOffset = Math.min(this.scrollOffset, Math.max(0, this.files.length - this.maxDisplayLines));
-        this.render();
+        await this.render();
     }
 
-    toggleViewMode() {
+    async toggleViewMode() {
         this.viewMode = this.viewMode === 'list' ? 'grid' : 'list';
         this.scrollOffset = 0;
-        this.render();
+        await this.render();
     }
 
     setupInput() {
@@ -408,43 +563,43 @@ class TerminalGUI {
             this.mouseEnabled = true;
         }
 
-        process.stdin.on('data', (key) => {
+        process.stdin.on('data', async (key) => {
             if (key === '\u0003') { // Ctrl+C
                 this.quit();
             } else if (key === 'q' || key === 'Q') {
                 this.quit();
             } else if (key === '\u001b[A') { // Up arrow
-                this.moveSelection(-1);
+                await this.moveSelection(-1);
             } else if (key === '\u001b[B') { // Down arrow
-                this.moveSelection(1);
+                await this.moveSelection(1);
             } else if (key === '\u001b[D') { // Left arrow
                 if (this.viewMode === 'grid') {
-                    this.moveSelection(-2);
+                    await this.moveSelection(-2);
                 }
             } else if (key === '\u001b[C') { // Right arrow
                 if (this.viewMode === 'grid') {
-                    this.moveSelection(2);
+                    await this.moveSelection(2);
                 }
             } else if (key === '\r' || key === '\n') { // Enter
-                this.handleEnterKey();
+                await this.handleEnterKey();
             } else if (key === 'r' || key === 'R') {
-                this.refresh();
+                await this.refresh();
             } else if (key === 'v' || key === 'V') { // Toggle view mode
-                this.toggleViewMode();
+                await this.toggleViewMode();
             } else if (key === '\u0008' || key === '\u007f') { // Backspace
-                this.goBack();
+                await this.goBack();
             } else if (this.mouseEnabled && key.startsWith('\x1b[M')) { // Mouse event
-                this.handleMouseEvent(key);
+                await this.handleMouseEvent(key);
             } else if (this.mouseEnabled && key.startsWith('\x1b[') && key.includes('M')) {
                 // Alternative mouse event format
-                this.handleMouseEvent(key);
+                await this.handleMouseEvent(key);
             } else if (this.mouseEnabled && key.length > 1 && key.charCodeAt(0) === 27) {
                 // Ignore unrecognized escape sequences silently
             }
         });
     }
 
-    handleMouseEvent(data) {
+    async handleMouseEvent(data) {
         try {
             let button, x, y;
             
@@ -472,9 +627,13 @@ class TerminalGUI {
                 let listIndex;
                 
                 if (this.viewMode === 'grid') {
-                    const { columns } = this.calculateGridDimensions();
+                    const { columns, gapWidth } = this.calculateGridDimensions();
+                    const minImageWidth = 32;
+                    const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
+                    const baseItemWidth = Math.floor(availableWidth / columns);
+                    const avgItemWidth = Math.max(minImageWidth, baseItemWidth);
                     const row = adjustedY - headerHeight;
-                    const col = Math.floor((x - 1) / Math.floor((this.terminalWidth - 2) / columns));
+                    const col = Math.floor((x - 1) / (avgItemWidth + gapWidth));
                     listIndex = (row + this.scrollOffset) * columns + col;
                 } else {
                     listIndex = adjustedY - headerHeight + this.scrollOffset;
@@ -482,7 +641,7 @@ class TerminalGUI {
                 
                 if (listIndex >= 0 && listIndex < this.files.length) {
                     this.selectedIndex = listIndex;
-                    this.render();
+                    await this.render();
                     
                     if (button === 3) {
                         this.handleMouseClick();
@@ -491,7 +650,7 @@ class TerminalGUI {
             }
         } catch (error) {
             console.log(`\nMouse event parsing error: ${error.message}`);
-            this.render();
+            await this.render();
         }
     }
 
@@ -517,7 +676,7 @@ class TerminalGUI {
         }
     }
 
-    handleEnterKey() {
+    async handleEnterKey() {
         if (this.files.length === 0) return;
         
         const selectedItem = this.files[this.selectedIndex];
@@ -529,7 +688,7 @@ class TerminalGUI {
             this.lastClickTarget = null;
             
             if (selectedItem.type === 'directory') {
-                this.navigateToDirectory(selectedItem.path);
+                await this.navigateToDirectory(selectedItem.path);
             } else {
                 this.viewSelectedFile();
             }
@@ -537,18 +696,18 @@ class TerminalGUI {
             this.lastClickTime = currentTime;
             this.lastClickTarget = selectedItem.path;
             
-            this.render();
+            await this.render();
         }
     }
 
-    goBack() {
+    async goBack() {
         const parentDir = path.dirname(this.currentDirectory);
         if (parentDir !== this.currentDirectory) {
             this.currentDirectory = parentDir;
             this.selectedIndex = 0;
             this.scrollOffset = 0;
             this.files = this.getMediaFiles();
-            this.render();
+            await this.render();
         }
     }
 
@@ -564,9 +723,9 @@ class TerminalGUI {
         process.exit(0);
     }
 
-    start() {
+    async start() {
         this.files = this.getMediaFiles();
-        this.render();
+        await this.render();
         this.setupInput();
         
         process.on('exit', () => {
@@ -584,4 +743,7 @@ class TerminalGUI {
 }
 
 const gui = new TerminalGUI();
-gui.start();
+gui.start().catch(error => {
+    console.error('Error starting GUI:', error);
+    process.exit(1);
+});
