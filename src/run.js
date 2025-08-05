@@ -3,7 +3,7 @@ const path = require('path');
 const readline = require('readline');
 const { Generator } = require('./generate');
 
-const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga'];
+const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
 
 class TerminalGUI {
     constructor() {
@@ -30,6 +30,7 @@ class TerminalGUI {
         this.doubleClickThreshold = 500;
         this.mouseEnabled = false;
         this.hoverIndex = -1;
+        this.scrollMode = process.argv.includes('--scroll-arrows') || process.argv.includes('--scroll-mode');
         
         this.disableMouse = process.argv.includes('--no-mouse');
         
@@ -188,14 +189,49 @@ class TerminalGUI {
         const availableWidth = this.terminalWidth - 2;
         
         const minImageWidth = 32;
+        const minOtherWidth = 20;
         
+        // Calculate how many items we can fit horizontally
         const columns = Math.floor(availableWidth / (minImageWidth + gapWidth));
-        const rows = Math.ceil(this.files.length / columns);
-        return { columns: Math.max(1, columns), rows, gapWidth };
+        const actualColumns = Math.max(1, columns);
+        
+        // Calculate total rows needed based on actual item count
+        const rows = Math.ceil(this.files.length / actualColumns);
+        
+        // Calculate actual space used
+        const totalWidth = (actualColumns * minImageWidth) + ((actualColumns - 1) * gapWidth);
+        const totalHeight = rows * 17; // 17 lines per item (16 for image + 1 for filename)
+        
+        return { 
+            columns: actualColumns, 
+            rows, 
+            gapWidth,
+            totalWidth,
+            totalHeight,
+            itemWidth: minImageWidth,
+            itemHeight: 17
+        };
     }
 
     clearScreen() {
         process.stdout.write('\x1b[3J\x1b[H');
+    }
+
+    clearDisplayArea() {
+        // Clear only the display area (not the footer)
+        const displayHeight = this.maxDisplayLines + 2; // +2 for potential scroll indicators and header
+        for (let i = 0; i < displayHeight; i++) {
+            process.stdout.write(`\x1b[${i + 1};1H`);
+            process.stdout.write(' '.repeat(this.terminalWidth));
+        }
+        process.stdout.write('\x1b[H');
+    }
+
+    forceClearScreen() {
+        // More aggressive screen clearing
+        process.stdout.write('\x1b[2J\x1b[H'); // Clear entire screen and move cursor to top
+        process.stdout.write('\x1b[3J\x1b[H'); // Clear scrollback buffer
+        process.stdout.write('\x1b[H'); // Ensure cursor is at top
     }
 
     drawHeader() {
@@ -305,15 +341,36 @@ class TerminalGUI {
     }
 
     async drawGridView() {
-        const { columns, rows, gapWidth } = this.calculateGridDimensions();
+        const { columns, rows, gapWidth, totalWidth, totalHeight, itemWidth, itemHeight } = this.calculateGridDimensions();
+        
         const minImageWidth = 32;
-        const minOtherWidth = 20;
+        const baseItemWidth = 32;
         
-        const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
-        const baseItemWidth = Math.floor(availableWidth / columns);
-        const itemHeight = 17;
+        // Calculate how many rows we can actually display
+        const maxVisibleRows = Math.floor(this.maxDisplayLines / itemHeight);
+        const actualVisibleRows = Math.min(maxVisibleRows, rows);
         
-        for (let row = 0; row < Math.min(rows, this.maxDisplayLines); row++) {
+        // Calculate scroll bounds based on actual space
+        const maxScrollRows = Math.max(0, rows - actualVisibleRows);
+        const maxScrollOffset = maxScrollRows * columns;
+        
+        // Ensure scroll offset is within bounds
+        if (this.scrollOffset < 0) {
+            this.scrollOffset = 0;
+        }
+        if (this.scrollOffset > maxScrollOffset) {
+            this.scrollOffset = maxScrollOffset;
+        }
+        
+        // Clear the display area first to prevent visual artifacts
+        for (let i = 0; i < this.maxDisplayLines + 2; i++) {
+            process.stdout.write(`\x1b[${i + 1};1H`);
+            process.stdout.write(' '.repeat(this.terminalWidth));
+        }
+        process.stdout.write('\x1b[H');
+        
+        // Render only the rows that fit in the available space
+        for (let row = 0; row < actualVisibleRows; row++) {
             const rowItems = [];
             for (let col = 0; col < columns; col++) {
                 const index = row * columns + col + this.scrollOffset;
@@ -413,12 +470,21 @@ class TerminalGUI {
             this.renderGridRow(rowItems, itemHeight, gapWidth);
         }
         
-        if (this.files.length > this.maxDisplayLines * columns) {
+        if (maxScrollOffset > 0) {
             if (this.scrollOffset > 0) {
                 console.log('\x1b[90m↑ More items above\x1b[0m');
             }
-            if (this.scrollOffset + this.maxDisplayLines * columns < this.files.length) {
+            if (this.scrollOffset < maxScrollOffset) {
                 console.log('\x1b[90m↓ More items below\x1b[0m');
+            }
+        }
+        
+        // Ensure proper positioning after scroll
+        if (this.scrollOffset > 0) {
+            // Add a small visual indicator for scroll position
+            const scrollIndicator = `\x1b[90mScroll: ${Math.floor(this.scrollOffset / columns) + 1}/${Math.ceil(this.files.length / columns)}\x1b[0m`;
+            if (scrollIndicator.length < this.terminalWidth) {
+                console.log(scrollIndicator);
             }
         }
     }
@@ -434,10 +500,22 @@ class TerminalGUI {
         
         let navText;
         const viewModeText = `View: ${this.viewMode.toUpperCase()}`;
-        if (this.mouseEnabled) {
-            navText = `${viewModeText} | ↑/↓ Select  Mouse: Single-Click Select  Double-Click Open  Right-Click: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+        if (this.viewMode === 'grid') {
+            const scrollText = this.scrollMode ? '\x1b[1m\x1b[33m↑/↓ Scroll\x1b[0m' : '↑/↓ Select';
+            const pageText = 'PgUp/PgDn: Scroll';
+            const toggleText = this.scrollMode ? '\x1b[1m\x1b[33mS: Toggle Scroll\x1b[0m' : 'S: Toggle Scroll';
+            
+            if (this.mouseEnabled) {
+                navText = `${viewModeText} | ${scrollText} ${pageText} ${toggleText} Mouse: Single-Click Select  Double-Click Open  Right-Click: Open  Scroll-Wheel: Scroll  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+            } else {
+                navText = `${viewModeText} | ${scrollText} ${pageText} ${toggleText} Enter: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+            }
         } else {
-            navText = `${viewModeText} | ↑/↓ Select  Enter: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+            if (this.mouseEnabled) {
+                navText = `${viewModeText} | ↑/↓ Select  Mouse: Single-Click Select  Double-Click Open  Right-Click: Open  Scroll-Wheel: Scroll  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+            } else {
+                navText = `${viewModeText} | ↑/↓ Select  Enter: Open  V: Toggle View  Backspace: Back  Q: Quit  R: Refresh`;
+            }
         }
         
         const maxTextLength = this.terminalWidth - 4;
@@ -464,11 +542,43 @@ class TerminalGUI {
         const countLine = '║' + countLabel + '\x1b[32m' + countText + '\x1b[0m' + countPadding + '║';
         console.log('\x1b[36m' + countLine + '\x1b[0m');
         
+        // Show scroll position indicator in footer
+        if (this.viewMode === 'grid' && this.scrollMode && this.files.length > 0) {
+            const { columns } = this.calculateGridDimensions();
+            if (this.files.length > this.maxDisplayLines * columns) {
+                const totalRows = Math.ceil(this.files.length / columns);
+                const currentRow = Math.floor(this.scrollOffset / columns);
+                const visibleRows = this.maxDisplayLines;
+                const progress = Math.min(100, Math.max(0, (currentRow / (totalRows - visibleRows)) * 100));
+                const barLength = Math.min(30, this.terminalWidth - 20);
+                const filledLength = Math.floor((progress / 100) * barLength);
+                const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength);
+                const scrollText = `Scroll: [${bar}] ${Math.round(progress)}% (${currentRow + 1}/${totalRows})`;
+                const scrollPadding = ' '.repeat(Math.max(0, this.terminalWidth - 2 - scrollText.length));
+                const scrollLine = '║' + '\x1b[33m' + scrollText + '\x1b[0m' + scrollPadding + '║';
+                console.log('\x1b[36m' + scrollLine + '\x1b[0m');
+            }
+        }
+        
         console.log('\x1b[36m' + bottomBorder + '\x1b[0m');
     }
 
     async render() {
         this.clearScreen();
+        this.drawHeader();
+        await this.drawFileList();
+        this.drawFooter();
+
+        process.stdout.write('\x1b[H');
+    }
+
+    async renderWithClear() {
+        // Clear the display area more thoroughly to prevent artifacts
+        this.clearDisplayArea();
+        
+        // Ensure cursor is at the top
+        process.stdout.write('\x1b[H');
+        
         this.drawHeader();
         await this.drawFileList();
         this.drawFooter();
@@ -500,7 +610,10 @@ class TerminalGUI {
     }
 
     async moveSelectionGrid(direction) {
-        const { columns } = this.calculateGridDimensions();
+        const { columns, rows, itemHeight } = this.calculateGridDimensions();
+        const maxVisibleRows = Math.floor(this.maxDisplayLines / itemHeight);
+        const actualVisibleRows = Math.min(maxVisibleRows, rows);
+        
         let newIndex = this.selectedIndex;
         
         if (direction === -1) { // Up
@@ -516,17 +629,49 @@ class TerminalGUI {
         if (newIndex !== this.selectedIndex && newIndex >= 0 && newIndex < this.files.length) {
             this.selectedIndex = newIndex;
             
-            const maxVisibleRows = this.maxDisplayLines;
             const currentVisibleRow = Math.floor((this.selectedIndex - this.scrollOffset) / columns);
             
             if (currentVisibleRow < 0) {
                 this.scrollOffset = this.selectedIndex;
-            } else if (currentVisibleRow >= maxVisibleRows) {
-                this.scrollOffset = Math.max(0, this.selectedIndex - (maxVisibleRows - 1) * columns);
+            } else if (currentVisibleRow >= actualVisibleRows) {
+                this.scrollOffset = Math.max(0, this.selectedIndex - (actualVisibleRows - 1) * columns);
             }
             
-            await this.render();
+            // Use renderWithClear for consistent position updates
+            await this.renderWithClear();
         }
+    }
+
+    async scrollGrid(direction) {
+        const { columns, rows, itemHeight } = this.calculateGridDimensions();
+        const maxVisibleRows = Math.floor(this.maxDisplayLines / itemHeight);
+        const actualVisibleRows = Math.min(maxVisibleRows, rows);
+        const maxScrollRows = Math.max(0, rows - actualVisibleRows);
+        const maxScrollOffset = maxScrollRows * columns;
+        
+        const scrollAmount = columns; // Scroll by one row
+        
+        if (direction === -1) { // Scroll up
+            this.scrollOffset = Math.max(0, this.scrollOffset - scrollAmount);
+        } else { // Scroll down
+            this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + scrollAmount);
+        }
+        
+        // Adjust selected index if it's no longer visible
+        const maxVisibleIndex = this.scrollOffset + (this.maxDisplayLines * columns) - 1;
+        const minVisibleIndex = this.scrollOffset;
+        
+        if (this.selectedIndex < minVisibleIndex) {
+            this.selectedIndex = minVisibleIndex;
+        } else if (this.selectedIndex > maxVisibleIndex) {
+            this.selectedIndex = maxVisibleIndex;
+        }
+        
+        // Use renderWithClear for smoother scrolling with position updates
+        await this.renderWithClear();
+        
+        // Small delay for visual feedback during scroll
+        await new Promise(resolve => setTimeout(resolve, 50));
     }
 
     viewSelectedFile() {
@@ -573,6 +718,11 @@ class TerminalGUI {
         await this.render();
     }
 
+    async toggleScrollMode() {
+        this.scrollMode = !this.scrollMode;
+        await this.render();
+    }
+
     setupInput() {
         process.stdin.setRawMode(true);
         process.stdin.resume();
@@ -590,9 +740,17 @@ class TerminalGUI {
             } else if (key === 'q' || key === 'Q') {
                 this.quit();
             } else if (key === '\u001b[A') { // Up arrow
-                await this.moveSelection(-1);
+                if (this.viewMode === 'grid' && this.scrollMode) {
+                    await this.scrollGrid(-1);
+                } else {
+                    await this.moveSelection(-1);
+                }
             } else if (key === '\u001b[B') { // Down arrow
-                await this.moveSelection(1);
+                if (this.viewMode === 'grid' && this.scrollMode) {
+                    await this.scrollGrid(1);
+                } else {
+                    await this.moveSelection(1);
+                }
             } else if (key === '\u001b[D') { // Left arrow
                 if (this.viewMode === 'grid') {
                     await this.moveSelection(-2);
@@ -601,12 +759,22 @@ class TerminalGUI {
                 if (this.viewMode === 'grid') {
                     await this.moveSelection(2);
                 }
+            } else if (key === '\u001b[5~') { // Page Up
+                if (this.viewMode === 'grid') {
+                    await this.scrollGrid(-1);
+                }
+            } else if (key === '\u001b[6~') { // Page Down
+                if (this.viewMode === 'grid') {
+                    await this.scrollGrid(1);
+                }
             } else if (key === '\r' || key === '\n') { // Enter
                 await this.handleEnterKey();
             } else if (key === 'r' || key === 'R') {
                 await this.refresh();
             } else if (key === 'v' || key === 'V') { // Toggle view mode
                 await this.toggleViewMode();
+            } else if (key === 's' || key === 'S') { // Toggle scroll mode
+                await this.toggleScrollMode();
             } else if (key === '\u0008' || key === '\u007f') { // Backspace
                 await this.goBack();
             } else if (this.mouseEnabled && key.startsWith('\x1b[M')) { // Mouse event
@@ -617,6 +785,9 @@ class TerminalGUI {
             } else if (this.mouseEnabled && key.startsWith('\x1b[') && key.includes('t')) {
                 // Mouse movement events (optional hover support)
                 await this.handleMouseMovement(key);
+            } else if (this.mouseEnabled && key.startsWith('\x1b[') && key.includes('A')) {
+                // Scroll wheel events in some terminals
+                await this.handleMouseEvent(key);
             } else if (this.mouseEnabled && key.length > 1 && key.charCodeAt(0) === 27) {
                 await this.handleMouseEvent(key);
             }
@@ -648,6 +819,14 @@ class TerminalGUI {
                 } else {
                     return;
                 }
+            }
+            
+            // Handle scroll wheel events (button 64 = scroll up, button 65 = scroll down)
+            // Also handle alternative formats: 96 = scroll up, 97 = scroll down
+            if (button === 64 || button === 65 || button === 96 || button === 97) {
+                const isScrollUp = (button === 64 || button === 96);
+                await this.handleScrollWheel(isScrollUp ? -1 : 1);
+                return;
             }
             
             const adjustedY = y - 1;
@@ -799,6 +978,57 @@ class TerminalGUI {
         }
     }
 
+    async handleScrollWheel(direction) {
+        if (this.viewMode === 'grid') {
+            const { columns, rows, itemHeight } = this.calculateGridDimensions();
+            const maxVisibleRows = Math.floor(this.maxDisplayLines / itemHeight);
+            const actualVisibleRows = Math.min(maxVisibleRows, rows);
+            const maxScrollRows = Math.max(0, rows - actualVisibleRows);
+            const maxScrollOffset = maxScrollRows * columns;
+            
+            const scrollAmount = columns; // Scroll by one row
+            
+            if (direction === -1) { // Scroll up
+                this.scrollOffset = Math.max(0, this.scrollOffset - scrollAmount);
+            } else { // Scroll down
+                this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + scrollAmount);
+            }
+            
+            // Adjust selected index if it's no longer visible
+            const maxVisibleIndex = this.scrollOffset + (this.maxDisplayLines * columns) - 1;
+            const minVisibleIndex = this.scrollOffset;
+            
+            if (this.selectedIndex < minVisibleIndex) {
+                this.selectedIndex = minVisibleIndex;
+            } else if (this.selectedIndex > maxVisibleIndex) {
+                this.selectedIndex = maxVisibleIndex;
+            }
+            
+            // Use renderWithClear for smoother scrolling with proper position updates
+            await this.renderWithClear();
+        } else {
+            // For list view, scroll by one item
+            if (direction === -1) { // Scroll up
+                this.scrollOffset = Math.max(0, this.scrollOffset - 1);
+            } else { // Scroll down
+                const maxScrollOffset = Math.max(0, this.files.length - this.maxDisplayLines);
+                this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + 1);
+            }
+            
+            // Adjust selected index if it's no longer visible
+            const maxVisibleIndex = this.scrollOffset + this.maxDisplayLines - 1;
+            const minVisibleIndex = this.scrollOffset;
+            
+            if (this.selectedIndex < minVisibleIndex) {
+                this.selectedIndex = minVisibleIndex;
+            } else if (this.selectedIndex > maxVisibleIndex) {
+                this.selectedIndex = maxVisibleIndex;
+            }
+            
+            await this.renderWithClear();
+        }
+    }
+
     async handleLeftMouseClick() {
         if (this.files.length === 0) return;
         
@@ -892,6 +1122,9 @@ class TerminalGUI {
         });
     }
 }
+
+// Export the class for testing
+module.exports = { TerminalGUI };
 
 const gui = new TerminalGUI();
 gui.start().catch(error => {
