@@ -35,6 +35,8 @@ class TerminalGUI {
         
         this.thumbnailCache = new Map();
         this.generator = new Generator();
+
+        // this.folderIcon = this.generator.generate(directoryIconData, 32, 32);
         
         process.stdout.write('\x1b[?25l');
         
@@ -325,18 +327,31 @@ class TerminalGUI {
                 const isSelected = index === this.selectedIndex;
                 
                 if (item.type === 'directory') {
-                    const itemWidth = Math.max(minOtherWidth, baseItemWidth);
+                    // const itemWidth = Math.max(minOtherWidth, baseItemWidth);
+                    const itemWidth = Math.max(minImageWidth, baseItemWidth);
                     const icon = '📁';
                     const name = item.name;
                     const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
-                    const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
+                    const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 3));
                     const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
-                    const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
+                    // const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
+                    const displayText = `${displayName}${padding}`;
                     
+                    // rowItems.push({
+                    //     type: 'directory',
+                    //     content: `${color}${displayText}\x1b[0m`,
+                    //     width: itemWidth
+                    // });
+                    const folderData = await this.generator.generate('src/assets/dir.svg', 32, 32);
+        
+                    const folderIcon = this.renderThumbnail(folderData, itemWidth, isSelected, item.name);
+        
+
                     rowItems.push({
-                        type: 'directory',
-                        content: `${color}${displayText}\x1b[0m`,
-                        width: itemWidth
+                        type: 'image',
+                        content: folderIcon,
+                        width: itemWidth,
+                        name: displayName
                     });
                 } else if (this.isMediaFile(item.name)) {
                     const itemWidth = Math.max(minImageWidth, baseItemWidth);
@@ -353,7 +368,7 @@ class TerminalGUI {
                         } else {
                             const icon = '📄';
                             const name = item.name;
-                            const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
+                            const displayName = name.length > itemWidth - 6 ? name.substring(0, itemWidth - 7) + '...' : name;
                             const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
                             const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
                             const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
@@ -367,7 +382,7 @@ class TerminalGUI {
                     } catch (error) {
                         const icon = '📄';
                         const name = item.name;
-                        const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
+                        const displayName = name.length > itemWidth - 6 ? name.substring(0, itemWidth - 7) + '...' : name;
                         const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
                         const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
                         const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
