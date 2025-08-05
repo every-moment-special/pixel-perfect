@@ -5,6 +5,209 @@ const { Generator } = require('./generate');
 
 const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
 
+class ImageGallerySlider {
+    constructor(imagePaths, startIndex = 0, generator) {
+        this.imagePaths = imagePaths;
+        this.currentIndex = startIndex;
+        this.generator = generator;
+        this.isNavigating = false;
+        this.terminalWidth = process.stdout.columns || 80;
+        this.terminalHeight = process.stdout.rows || 24;
+        this.scrollOffset = 0;
+        this.imageData = null;
+        this.imageHeight = 0;
+    }
+
+    async showCurrentImage() {
+        if (this.imagePaths.length === 0) {
+            console.log('No image files found.');
+            return;
+        }
+
+        const currentPath = this.imagePaths[this.currentIndex];
+        const filename = path.basename(currentPath);
+        
+        process.stdout.write('\x1b[2J\x1b[H');
+        console.log(`\x1b[36mGallery: ${this.currentIndex + 1}/${this.imagePaths.length}\x1b[0m`);
+        console.log(`\x1b[33mCurrent: ${filename}\x1b[0m\n`);
+
+        try {
+            // Generate image at full width
+            const data = await this.generator.generate(currentPath);
+            this.imageData = data;
+            this.calculateImageDimensions();
+            this.scrollOffset = 0; // Reset scroll when changing images
+            this.displayWithNavigation();
+        } catch (error) {
+            console.error(`Error loading image: ${error.message}`);
+            this.showNavigationHelp();
+        }
+    }
+
+    calculateImageDimensions() {
+        if (!this.imageData) return;
+        
+        let cells;
+        if (this.imageData.t && this.imageData.d) {
+            const ansiTable = this.imageData.t;
+            cells = this.imageData.d.map(cell => ({
+                x: cell[0],
+                y: cell[1],
+                char: cell[2],
+                ansi: ansiTable[cell[3]] || ''
+            }));
+        } else {
+            cells = this.imageData;
+        }
+        
+        this.imageHeight = cells.reduce((max, cell) => Math.max(max, cell.y), 0) + 1;
+    }
+
+    displayWithNavigation() {
+        if (!this.imageData) return;
+        
+        process.stdout.write('\x1b[2J\x1b[H');
+        
+        let cells;
+        if (this.imageData.t && this.imageData.d) {
+            const ansiTable = this.imageData.t;
+            cells = this.imageData.d.map(cell => ({
+                x: cell[0],
+                y: cell[1],
+                char: cell[2],
+                ansi: ansiTable[cell[3]] || ''
+            }));
+        } else {
+            cells = this.imageData;
+        }
+        
+        const maxY = cells.reduce((max, cell) => Math.max(max, cell.y), 0);
+        const maxX = cells.reduce((max, cell) => Math.max(max, cell.x), 0);
+        const display = Array(maxY + 1).fill().map(() => Array(maxX + 1).fill(' '));
+        
+        cells.forEach(cell => {
+            if (cell.y < display.length && cell.x < display[0].length) {
+                display[cell.y][cell.x] = cell.ansi + cell.char + '\x1b[0m';
+            }
+        });
+        
+        // Calculate visible area
+        const availableHeight = this.terminalHeight - 6; // Leave space for header and footer
+        const startY = this.scrollOffset;
+        const endY = Math.min(startY + availableHeight, display.length);
+        
+        // Display only the visible portion
+        for (let y = startY; y < endY; y++) {
+            if (y < display.length) {
+                process.stdout.write(display[y].join('') + '\n');
+            }
+        }
+        
+        this.showNavigationInfo();
+        
+        this.setupNavigation();
+    }
+
+    showNavigationInfo() {
+        const currentPath = this.imagePaths[this.currentIndex];
+        const filename = path.basename(currentPath);
+        const totalImages = this.imagePaths.length;
+        const currentNum = this.currentIndex + 1;
+        
+        const availableHeight = this.terminalHeight - 6;
+        const totalHeight = this.imageHeight;
+        const scrollProgress = totalHeight > availableHeight ? 
+            ` (${this.scrollOffset + 1}-${Math.min(this.scrollOffset + availableHeight, totalHeight)}/${totalHeight})` : '';
+        
+        process.stdout.write(`\x1b[${process.stdout.rows};1H`);
+        console.log(`\x1b[36m${currentNum}/${totalImages}\x1b[0m - \x1b[33m${filename}\x1b[0m${scrollProgress}`);
+        console.log('\x1b[90mNavigation: ←/→ arrows (images), ↑/↓ arrows (scroll), q to quit, ESC to return\x1b[0m');
+    }
+
+    showNavigationHelp() {
+        process.stdout.write('\x1b[2J\x1b[H');
+        console.log('\x1b[33mNavigation Controls:\x1b[0m');
+        console.log('  \x1b[36m←/→\x1b[0m  Navigate between images');
+        console.log('  \x1b[36m↑/↓\x1b[0m  Scroll up/down in current image');
+        console.log('  \x1b[36mq\x1b[0m  Quit gallery');
+        console.log('  \x1b[36mESC\x1b[0m  Return to browser');
+        console.log('\n\x1b[90mPress any key to continue...\x1b[0m');
+    }
+
+    setupNavigation() {
+        // Remove any existing listeners to avoid conflicts
+        process.stdin.removeAllListeners('data');
+        
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding('utf8');
+
+        const handleKey = async (key) => {
+            if (this.isNavigating) return;
+            
+            this.isNavigating = true;
+            
+            if (key === 'q' || key === 'Q') {
+                process.stdout.write('\x1b[2J\x1b[H');
+                process.stdin.setRawMode(false);
+                process.stdin.pause();
+                process.exit(0);
+            } else if (key === '\u001b') { // ESC key
+                process.stdout.write('\x1b[2J\x1b[H');
+                process.stdin.setRawMode(false);
+                process.stdin.pause();
+                this.onExit();
+                return;
+            } else if (key === '\u001b[D') { // Left arrow
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                    await this.showCurrentImage();
+                }
+            } else if (key === '\u001b[C') { // Right arrow
+                if (this.currentIndex < this.imagePaths.length - 1) {
+                    this.currentIndex++;
+                    await this.showCurrentImage();
+                }
+            } else if (key === '\u001b[A') { // Up arrow - scroll up
+                const availableHeight = this.terminalHeight - 6;
+                if (this.scrollOffset > 0) {
+                    this.scrollOffset = Math.max(0, this.scrollOffset - 1);
+                    this.displayWithNavigation();
+                }
+            } else if (key === '\u001b[B') { // Down arrow - scroll down
+                const availableHeight = this.terminalHeight - 6;
+                const maxScrollOffset = Math.max(0, this.imageHeight - availableHeight);
+                if (this.scrollOffset < maxScrollOffset) {
+                    this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + 1);
+                    this.displayWithNavigation();
+                }
+            }
+            
+            this.isNavigating = false;
+        };
+
+        process.stdin.on('data', handleKey);
+        
+        // Store the handler so we can remove it later
+        this.keyHandler = handleKey;
+    }
+
+    onExit() {
+        // Remove the gallery's key handler
+        if (this.keyHandler) {
+            process.stdin.removeListener('data', this.keyHandler);
+        }
+        
+        // Restore the main GUI's input handling
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+    }
+
+    async start() {
+        await this.showCurrentImage();
+    }
+}
+
 class TerminalGUI {
     constructor() {
         this.currentDirectory = process.cwd();
@@ -674,27 +877,47 @@ class TerminalGUI {
         await new Promise(resolve => setTimeout(resolve, 50));
     }
 
-    viewSelectedFile() {
+    async viewSelectedFile() {
         if (this.files.length === 0) return;
         
         const selectedItem = this.files[this.selectedIndex];
         
         if (selectedItem.type === 'directory') {
             this.navigateToDirectory(selectedItem.path);
-        } else {
-            // console.log(`\n\x1b[33mOpening: ${selectedItem.name}\x1b[0m`);
-            
-            // console.log(`\x1b[36mFile Details:\x1b[0m`);
-            // console.log(`  Name: ${selectedItem.name}`);
-            // console.log(`  Size: ${this.formatFileSize(selectedItem.size)}`);
-            // console.log(`  Type: ${selectedItem.extension.toUpperCase()}`);
-            // console.log(`  Path: ${selectedItem.path}`);
-            
-            // console.log('\n\x1b[90mPress any key to continue...\x1b[0m');
-            // this.rl.question('', () => {
-            //     this.render();
-            // });
+        } else if (this.isMediaFile(selectedItem.name)) {
+            await this.openImageViewer(selectedItem.path);
         }
+    }
+
+    async openImageViewer(imagePath) {
+        // Get all image files in the current directory
+        const imageFiles = this.files
+            .filter(item => item.type === 'file' && this.isMediaFile(item.name))
+            .map(item => item.path);
+        
+        // Find the index of the selected image
+        const currentIndex = imageFiles.indexOf(imagePath);
+        
+        if (currentIndex === -1) {
+            console.log('Image not found in current directory.');
+            return;
+        }
+        
+        // Create a gallery slider for navigation
+        const gallery = new ImageGallerySlider(imageFiles, currentIndex, this.generator);
+        
+        // Wait for the gallery to complete
+        await new Promise((resolve) => {
+            gallery.onExit = () => {
+                // Restore the main GUI's input handling
+                this.setupInput();
+                resolve();
+            };
+            gallery.start();
+        });
+        
+        // Return to the file browser after exiting the viewer
+        await this.render();
     }
 
     async navigateToDirectory(dirPath) {
@@ -724,6 +947,9 @@ class TerminalGUI {
     }
 
     setupInput() {
+        // Remove any existing listeners to avoid conflicts
+        process.stdin.removeAllListeners('data');
+        
         process.stdin.setRawMode(true);
         process.stdin.resume();
         process.stdin.setEncoding('utf8');
@@ -734,7 +960,7 @@ class TerminalGUI {
             this.mouseEnabled = true;
         }
 
-        process.stdin.on('data', async (key) => {
+        const handleKey = async (key) => {
             if (key === '\u0003') { // Ctrl+C
                 this.quit();
             } else if (key === 'q' || key === 'Q') {
@@ -791,7 +1017,9 @@ class TerminalGUI {
             } else if (this.mouseEnabled && key.length > 1 && key.charCodeAt(0) === 27) {
                 await this.handleMouseEvent(key);
             }
-        });
+        };
+
+        process.stdin.on('data', handleKey);
     }
 
     async handleMouseEvent(data) {
@@ -1043,7 +1271,7 @@ class TerminalGUI {
             if (selectedItem.type === 'directory') {
                 await this.navigateToDirectory(selectedItem.path);
             } else {
-                this.viewSelectedFile();
+                await this.viewSelectedFile();
             }
         } else {
             this.lastClickTime = currentTime;
@@ -1069,7 +1297,7 @@ class TerminalGUI {
             if (selectedItem.type === 'directory') {
                 await this.navigateToDirectory(selectedItem.path);
             } else {
-                this.viewSelectedFile();
+                await this.viewSelectedFile();
             }
         } else {
             this.lastClickTime = currentTime;
