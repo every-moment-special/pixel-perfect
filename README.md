@@ -42,7 +42,9 @@ npm install
  
   </td>
   <td>
+   
   Displays a previously generated `.json` ANSI image in the terminal.
+  
   </td>
   </tr>
   <tr>
