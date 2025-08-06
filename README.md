@@ -4,7 +4,7 @@ A minimal, mouse-aware GUI to browse media and folders directly in your terminal
 > [!NOTE]
 > This project is still in early development.
 > 
-> **Supported formats:** 
+> **Supported formats**:
 > `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`, `.tiff`, `.tga`, `.svg`
 
 > [!IMPORTANT]
