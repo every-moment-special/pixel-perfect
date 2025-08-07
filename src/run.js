@@ -16,6 +16,14 @@ class ImageGallerySlider {
         this.scrollOffset = 0;
         this.imageData = null;
         this.imageHeight = 0;
+        
+        this.resizeHandler = async () => {
+            this.terminalWidth = process.stdout.columns || 80;
+            this.terminalHeight = process.stdout.rows || 24;
+            await this.showCurrentImage();
+        };
+        
+        process.stdout.on('resize', this.resizeHandler);
     }
 
     async showCurrentImage() {
@@ -32,11 +40,10 @@ class ImageGallerySlider {
         console.log(`\x1b[33mCurrent: ${filename}\x1b[0m\n`);
 
         try {
-            // Generate image at full width
             const data = await this.generator.generate(currentPath);
             this.imageData = data;
             this.calculateImageDimensions();
-            this.scrollOffset = 0; // Reset scroll when changing images
+            this.scrollOffset = 0;
             this.displayWithNavigation();
         } catch (error) {
             console.error(`Error loading image: ${error.message}`);
@@ -91,12 +98,10 @@ class ImageGallerySlider {
             }
         });
         
-        // Calculate visible area
-        const availableHeight = this.terminalHeight - 6; // Leave space for header and footer
+        const availableHeight = this.terminalHeight - 6;
         const startY = this.scrollOffset;
         const endY = Math.min(startY + availableHeight, display.length);
         
-        // Display only the visible portion
         for (let y = startY; y < endY; y++) {
             if (y < display.length) {
                 process.stdout.write(display[y].join('') + '\n');
@@ -119,7 +124,7 @@ class ImageGallerySlider {
         const scrollProgress = totalHeight > availableHeight ? 
             ` (${this.scrollOffset + 1}-${Math.min(this.scrollOffset + availableHeight, totalHeight)}/${totalHeight})` : '';
         
-        process.stdout.write(`\x1b[${process.stdout.rows};1H`);
+        process.stdout.write(`\x1b[${this.terminalHeight};1H`);
         console.log(`\x1b[36m${currentNum}/${totalImages}\x1b[0m - \x1b[33m${filename}\x1b[0m${scrollProgress}`);
         console.log('\x1b[90mNavigation: ←/→ arrows (images), ↑/↓ arrows (scroll), q to quit, ESC to return\x1b[0m');
     }
@@ -135,7 +140,6 @@ class ImageGallerySlider {
     }
 
     setupNavigation() {
-        // Remove any existing listeners to avoid conflicts
         process.stdin.removeAllListeners('data');
         
         process.stdin.setRawMode(true);
@@ -188,17 +192,16 @@ class ImageGallerySlider {
 
         process.stdin.on('data', handleKey);
         
-        // Store the handler so we can remove it later
         this.keyHandler = handleKey;
     }
 
     onExit() {
-        // Remove the gallery's key handler
         if (this.keyHandler) {
             process.stdin.removeListener('data', this.keyHandler);
         }
         
-        // Restore the main GUI's input handling
+        process.stdout.removeListener('resize', this.resizeHandler);
+        
         process.stdin.setRawMode(false);
         process.stdin.pause();
     }
@@ -239,6 +242,8 @@ class TerminalGUI {
         
         this.thumbnailCache = new Map();
         this.generator = new Generator();
+        
+        this.activeGallery = null;
 
         // this.folderIcon = this.generator.generate(directoryIconData, 32, 32);
         
@@ -250,6 +255,11 @@ class TerminalGUI {
             this.terminalWidth = Math.max(this.terminalWidth, 40);
             this.terminalHeight = Math.max(this.terminalHeight, 15);
             this.maxDisplayLines = Math.max(1, this.terminalHeight - 5);
+            
+            if (this.activeGallery) {
+                return;
+            }
+            
             await this.render();
         });
     }
@@ -265,7 +275,6 @@ class TerminalGUI {
             const items = [];
             
             for (const file of files) {
-                // Skip . and .. directories
                 if (file === '.' || file === '..') continue;
                 
                 const fullPath = path.join(this.currentDirectory, file);
@@ -394,16 +403,13 @@ class TerminalGUI {
         const minImageWidth = 32;
         const minOtherWidth = 20;
         
-        // Calculate how many items we can fit horizontally
         const columns = Math.floor(availableWidth / (minImageWidth + gapWidth));
         const actualColumns = Math.max(1, columns);
         
-        // Calculate total rows needed based on actual item count
         const rows = Math.ceil(this.files.length / actualColumns);
         
-        // Calculate actual space used
         const totalWidth = (actualColumns * minImageWidth) + ((actualColumns - 1) * gapWidth);
-        const totalHeight = rows * 17; // 17 lines per item (16 for image + 1 for filename)
+        const totalHeight = rows * 17;
         
         return { 
             columns: actualColumns, 
@@ -421,8 +427,7 @@ class TerminalGUI {
     }
 
     clearDisplayArea() {
-        // Clear only the display area (not the footer)
-        const displayHeight = this.maxDisplayLines + 2; // +2 for potential scroll indicators and header
+        const displayHeight = this.maxDisplayLines + 2;
         for (let i = 0; i < displayHeight; i++) {
             process.stdout.write(`\x1b[${i + 1};1H`);
             process.stdout.write(' '.repeat(this.terminalWidth));
@@ -431,10 +436,9 @@ class TerminalGUI {
     }
 
     forceClearScreen() {
-        // More aggressive screen clearing
-        process.stdout.write('\x1b[2J\x1b[H'); // Clear entire screen and move cursor to top
-        process.stdout.write('\x1b[3J\x1b[H'); // Clear scrollback buffer
-        process.stdout.write('\x1b[H'); // Ensure cursor is at top
+        process.stdout.write('\x1b[2J\x1b[H');
+        process.stdout.write('\x1b[3J\x1b[H');
+        process.stdout.write('\x1b[H');
     }
 
     drawHeader() {
@@ -549,15 +553,12 @@ class TerminalGUI {
         const minImageWidth = 32;
         const baseItemWidth = 32;
         
-        // Calculate how many rows we can actually display
         const maxVisibleRows = Math.floor(this.maxDisplayLines / itemHeight);
         const actualVisibleRows = Math.min(maxVisibleRows, rows);
         
-        // Calculate scroll bounds based on actual space
         const maxScrollRows = Math.max(0, rows - actualVisibleRows);
         const maxScrollOffset = maxScrollRows * columns;
         
-        // Ensure scroll offset is within bounds
         if (this.scrollOffset < 0) {
             this.scrollOffset = 0;
         }
@@ -565,14 +566,12 @@ class TerminalGUI {
             this.scrollOffset = maxScrollOffset;
         }
         
-        // Clear the display area first to prevent visual artifacts
         for (let i = 0; i < this.maxDisplayLines + 2; i++) {
             process.stdout.write(`\x1b[${i + 1};1H`);
             process.stdout.write(' '.repeat(this.terminalWidth));
         }
         process.stdout.write('\x1b[H');
         
-        // Render only the rows that fit in the available space
         for (let row = 0; row < actualVisibleRows; row++) {
             const rowItems = [];
             for (let col = 0; col < columns; col++) {
@@ -682,9 +681,7 @@ class TerminalGUI {
             }
         }
         
-        // Ensure proper positioning after scroll
         if (this.scrollOffset > 0) {
-            // Add a small visual indicator for scroll position
             const scrollIndicator = `\x1b[90mScroll: ${Math.floor(this.scrollOffset / columns) + 1}/${Math.ceil(this.files.length / columns)}\x1b[0m`;
             if (scrollIndicator.length < this.terminalWidth) {
                 console.log(scrollIndicator);
@@ -745,7 +742,6 @@ class TerminalGUI {
         const countLine = '║' + countLabel + '\x1b[32m' + countText + '\x1b[0m' + countPadding + '║';
         console.log('\x1b[36m' + countLine + '\x1b[0m');
         
-        // Show scroll position indicator in footer
         if (this.viewMode === 'grid' && this.scrollMode && this.files.length > 0) {
             const { columns } = this.calculateGridDimensions();
             if (this.files.length > this.maxDisplayLines * columns) {
@@ -776,10 +772,8 @@ class TerminalGUI {
     }
 
     async renderWithClear() {
-        // Clear the display area more thoroughly to prevent artifacts
         this.clearDisplayArea();
         
-        // Ensure cursor is at the top
         process.stdout.write('\x1b[H');
         
         this.drawHeader();
@@ -840,7 +834,6 @@ class TerminalGUI {
                 this.scrollOffset = Math.max(0, this.selectedIndex - (actualVisibleRows - 1) * columns);
             }
             
-            // Use renderWithClear for consistent position updates
             await this.renderWithClear();
         }
     }
@@ -852,15 +845,14 @@ class TerminalGUI {
         const maxScrollRows = Math.max(0, rows - actualVisibleRows);
         const maxScrollOffset = maxScrollRows * columns;
         
-        const scrollAmount = columns; // Scroll by one row
+        const scrollAmount = columns;
         
-        if (direction === -1) { // Scroll up
+        if (direction === -1) {
             this.scrollOffset = Math.max(0, this.scrollOffset - scrollAmount);
-        } else { // Scroll down
+        } else {
             this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + scrollAmount);
         }
         
-        // Adjust selected index if it's no longer visible
         const maxVisibleIndex = this.scrollOffset + (this.maxDisplayLines * columns) - 1;
         const minVisibleIndex = this.scrollOffset;
         
@@ -870,10 +862,8 @@ class TerminalGUI {
             this.selectedIndex = maxVisibleIndex;
         }
         
-        // Use renderWithClear for smoother scrolling with position updates
         await this.renderWithClear();
         
-        // Small delay for visual feedback during scroll
         await new Promise(resolve => setTimeout(resolve, 50));
     }
 
@@ -890,12 +880,10 @@ class TerminalGUI {
     }
 
     async openImageViewer(imagePath) {
-        // Get all image files in the current directory
         const imageFiles = this.files
             .filter(item => item.type === 'file' && this.isMediaFile(item.name))
             .map(item => item.path);
         
-        // Find the index of the selected image
         const currentIndex = imageFiles.indexOf(imagePath);
         
         if (currentIndex === -1) {
@@ -903,20 +891,19 @@ class TerminalGUI {
             return;
         }
         
-        // Create a gallery slider for navigation
         const gallery = new ImageGallerySlider(imageFiles, currentIndex, this.generator);
         
-        // Wait for the gallery to complete
+        this.activeGallery = gallery;
+        
         await new Promise((resolve) => {
             gallery.onExit = () => {
-                // Restore the main GUI's input handling
+                this.activeGallery = null;
                 this.setupInput();
                 resolve();
             };
             gallery.start();
         });
         
-        // Return to the file browser after exiting the viewer
         await this.render();
     }
 
@@ -947,7 +934,6 @@ class TerminalGUI {
     }
 
     setupInput() {
-        // Remove any existing listeners to avoid conflicts
         process.stdin.removeAllListeners('data');
         
         process.stdin.setRawMode(true);
@@ -1049,8 +1035,8 @@ class TerminalGUI {
                 }
             }
             
-            // Handle scroll wheel events (button 64 = scroll up, button 65 = scroll down)
-            // Also handle alternative formats: 96 = scroll up, 97 = scroll down
+            // (button 64 = scroll up, button 65 = scroll down)
+            // alternative formats: 96 = scroll up, 97 = scroll down
             if (button === 64 || button === 65 || button === 96 || button === 97) {
                 const isScrollUp = (button === 64 || button === 96);
                 await this.handleScrollWheel(isScrollUp ? -1 : 1);
@@ -1214,15 +1200,14 @@ class TerminalGUI {
             const maxScrollRows = Math.max(0, rows - actualVisibleRows);
             const maxScrollOffset = maxScrollRows * columns;
             
-            const scrollAmount = columns; // Scroll by one row
+            const scrollAmount = columns;
             
-            if (direction === -1) { // Scroll up
+            if (direction === -1) {
                 this.scrollOffset = Math.max(0, this.scrollOffset - scrollAmount);
-            } else { // Scroll down
+            } else {
                 this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + scrollAmount);
             }
             
-            // Adjust selected index if it's no longer visible
             const maxVisibleIndex = this.scrollOffset + (this.maxDisplayLines * columns) - 1;
             const minVisibleIndex = this.scrollOffset;
             
@@ -1232,18 +1217,15 @@ class TerminalGUI {
                 this.selectedIndex = maxVisibleIndex;
             }
             
-            // Use renderWithClear for smoother scrolling with proper position updates
             await this.renderWithClear();
         } else {
-            // For list view, scroll by one item
-            if (direction === -1) { // Scroll up
+            if (direction === -1) {
                 this.scrollOffset = Math.max(0, this.scrollOffset - 1);
-            } else { // Scroll down
+            } else {
                 const maxScrollOffset = Math.max(0, this.files.length - this.maxDisplayLines);
                 this.scrollOffset = Math.min(maxScrollOffset, this.scrollOffset + 1);
             }
             
-            // Adjust selected index if it's no longer visible
             const maxVisibleIndex = this.scrollOffset + this.maxDisplayLines - 1;
             const minVisibleIndex = this.scrollOffset;
             
@@ -1351,7 +1333,6 @@ class TerminalGUI {
     }
 }
 
-// Export the class for testing
 module.exports = { TerminalGUI };
 
 const gui = new TerminalGUI();
