@@ -2,6 +2,7 @@
     "name": "pixel-perfect",
     "version": "1.0.0",
     "main": "src/generate.js",
+    "type": "commonjs",
     "scripts": {
         "gen": "node --max-old-space-size=4096 src/generate.js",
         "see": "node --max-old-space-size=2048 src/display.js",

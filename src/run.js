@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { Generator } = require('./generate');
+const { setFontSize, isKitty } = require('./start');
 
 const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
 
@@ -1301,6 +1302,9 @@ class TerminalGUI {
     }
 
     quit() {
+        if (isKitty) {
+            setFontSize(9);
+        }
         if (this.mouseEnabled) {
             process.stdout.write('\x1b[?1000l');
             process.stdout.write('\x1b[?1002l');
@@ -1335,8 +1339,10 @@ class TerminalGUI {
 
 module.exports = { TerminalGUI };
 
-const gui = new TerminalGUI();
-gui.start().catch(error => {
-    console.error('Error starting GUI:', error);
-    process.exit(1);
-});
+if (require.main === module) {
+    const gui = new TerminalGUI();
+    gui.start().catch(error => {
+        console.error('Error starting GUI:', error);
+        process.exit(1);
+    });
+}
