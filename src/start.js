@@ -1,45 +1,54 @@
-const { spawn, exec } = require('child_process');
-const fs = require('fs');
+const { exec } = require('child_process');
+const { TerminalGUI } = require('./run.js');
 
-const socketPath = '/tmp/mykitty';
+const isKitty = !!process.env.KITTY_WINDOW_ID;
 
-const kittyProcess = spawn('kitty', [
-  `--listen-on=unix:${socketPath}`,
-  '--override',
-  'font_size=5.0'
-], {
-  detached: true,
-  stdio: 'ignore',
-});
-kittyProcess.unref();
-
-const waitForSocket = (path, retries = 10) => {
+function setFontSize(size) {
   return new Promise((resolve, reject) => {
-    const check = () => {
-      if (fs.existsSync(path)) {
-        resolve();
-      } else if (retries <= 0) {
-        reject(new Error('Timeout: Kitty socket not found'));
-      } else {
-        retries--;
-        setTimeout(check, 300);
-      }
-    };
-    check();
-  });
-};
-
-waitForSocket(socketPath)
-.then(() => {
-    exec(`kitty @ --to unix:${socketPath} set-font-size 1`, (err, stdout, stderr) => {
-        if (err) {
-            console.error('Error:', err.message);
-            return;
-        }
-        
-        console.log('Output:', stdout.trim());
+    exec(`kitty @ set-font-size ${size}`, (err, stdout, stderr) => {
+      if (err) return reject(err);
+      resolve(stdout.trim());
     });
-})
-.catch(err => {
-    console.error('Failed to connect to Kitty:', err.message);
+  });
+}
+
+async function main() {
+  if (isKitty) {
+    await setFontSize(1);
+  }
+
+
+  try {
+    const gui = new TerminalGUI();
+    await gui.start();
+
+  } catch (err) {
+    console.error("Startup error:", err);
+    process.exit(1);
+  }
+}
+
+async function shutdown() {
+  console.log("Running cleanup...");
+  try {
+    if (isKitty) {
+      await setFontSize(9);
+    }
+    console.log("Font size restored.");
+  } catch (err) {
+    console.error("Error restoring font size:", err.message);
+  } finally {
+    process.exit();
+  }
+}
+
+process.on('SIGINT', shutdown);   // Ctrl+C
+process.on('SIGTERM', shutdown);  // kill
+process.on('uncaughtException', err => {
+  console.error("Uncaught error:", err);
+  shutdown();
 });
+
+main();
+
+module.exports = { setFontSize, isKitty };
