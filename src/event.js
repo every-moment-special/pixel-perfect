@@ -5,13 +5,22 @@ class Event {
         process.stdin.setEncoding('utf8');
 
         this.listeners = {};
+        this.enableMouse();
 
-        // Key Press
-        process.stdin.on('data', (key) => {
+        // Key Press + Mouse
+        process.stdin.on('data', (data) => {
             // Ctrl+C
-            if (key === '\u0003') process.exit();
+            if (data === '\u0003') process.exit();
 
-            const parsed = this.parseKey(key);
+            // Mouse
+            if (data.startsWith('\x1b[<')) {
+                const mouse = this.parseMouse(data);
+                if (mouse) this.emit('mouse', mouse);
+                if (mouse?.type === 'down') this.emit('click', mouse);
+                return;
+            }
+
+            const parsed = this.parseKey(data);
 
             // (e.g. key)
             this.emit('key', parsed);
@@ -35,6 +44,40 @@ class Event {
                 rows: process.stdout.rows
             });
         });
+    }
+
+    enableMouse() {
+        // 1000 = click tracking, 1003 = any movement, 1006 = SGR mode
+        process.stdout.write('\x1b[?1000;1006;1003h');
+    }
+
+    disableMouse() {
+        process.stdout.write('\x1b[?1000;1006;1003l');
+    }
+
+    parseMouse(seq) {
+        // SGR mode: \x1b[<b;x;ym  OR  \x1b[<b;x;yM
+        const match = /\x1b\[<(\d+);(\d+);(\d+)([mM])/.exec(seq);
+        if (!match) return null;
+
+        let [ , btnCode, x, y, state ] = match;
+        btnCode = Number(btnCode);
+        x = Number(x);
+        y = Number(y);
+
+        const isMotion = (btnCode & 32) === 32; // bit 6 set = motion
+        const button = btnCode & 0b11; // 0 = left, 1 = middle, 2 = right
+        let type;
+
+        if (isMotion) {
+            type = 'move';
+        } else if (state === 'M') {
+            type = 'down';
+        } else {
+            type = 'up';
+        }
+
+        return { x, y, button, type };
     }
 
     parseKey(key) {
