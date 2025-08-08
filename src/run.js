@@ -334,7 +334,7 @@ class TerminalGUI {
         }
     }
 
-    renderThumbnail(thumbnailData, itemWidth, isSelected, filename) {
+    renderThumbnail(thumbnailData, itemWidth, isSelected, filename, useTripleText = false) {
         const lines = [];
         const maxHeight = 16;
         
@@ -356,10 +356,18 @@ class TerminalGUI {
         
         if (filename) {
             const displayName = filename.length > itemWidth - 2 ? filename.substring(0, itemWidth - 5) + '...' : filename;
-            const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[90m';
-            const leftPadding = Math.floor((itemWidth - displayName.length) / 2);
-            const rightPadding = itemWidth - displayName.length - leftPadding;
-            lines.push(`${color}${' '.repeat(leftPadding)}${displayName}${' '.repeat(rightPadding)}\x1b[0m`);
+            const leftPadding = Math.max(0, Math.floor((itemWidth - displayName.length) / 2));
+            const rightPadding = Math.max(0, itemWidth - displayName.length - leftPadding);
+
+            if (useTripleText) {
+                const oscTriple = `\x1b]66;s=3;${displayName}\x07`;
+                lines.push(`${' '.repeat(leftPadding)}${oscTriple}${' '.repeat(rightPadding)}`);
+                lines.push(' '.repeat(itemWidth));
+                lines.push(' '.repeat(itemWidth));
+            } else {
+                const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[90m';
+                lines.push(`${color}${' '.repeat(leftPadding)}${displayName}${' '.repeat(rightPadding)}\x1b[0m`);
+            }
         }
         
         return lines;
@@ -408,10 +416,17 @@ class TerminalGUI {
         const actualColumns = Math.max(1, columns);
         
         const rows = Math.ceil(this.files.length / actualColumns);
-        
+
         const totalWidth = (actualColumns * minImageWidth) + ((actualColumns - 1) * gapWidth);
-        const totalHeight = rows * 17;
-        
+
+        const tripleItemHeight = 19; // 16 image + 3 text
+        const normalItemHeight = 17; // 16 image + 1 text
+        const useTripleText = (minImageWidth * tripleItemHeight) >= 500;
+        this.useTripleText = useTripleText;
+
+        const itemHeight = useTripleText ? tripleItemHeight : normalItemHeight;
+        const totalHeight = rows * itemHeight;
+
         return { 
             columns: actualColumns, 
             rows, 
@@ -419,7 +434,7 @@ class TerminalGUI {
             totalWidth,
             totalHeight,
             itemWidth: minImageWidth,
-            itemHeight: 17
+            itemHeight
         };
     }
 
@@ -549,10 +564,7 @@ class TerminalGUI {
     }
 
     async drawGridView() {
-        const { columns, rows, gapWidth, totalWidth, totalHeight, itemWidth, itemHeight } = this.calculateGridDimensions();
-        
-        const minImageWidth = 32;
-        const baseItemWidth = 32;
+        const { columns, rows, gapWidth, totalWidth, totalHeight, itemWidth: tileWidth, itemHeight } = this.calculateGridDimensions();
         
         const maxVisibleRows = Math.floor(this.maxDisplayLines / itemHeight);
         const actualVisibleRows = Math.min(maxVisibleRows, rows);
@@ -579,7 +591,7 @@ class TerminalGUI {
                 const index = row * columns + col + this.scrollOffset;
                 
                 if (index >= this.files.length) {
-                    rowItems.push({ type: 'empty', width: baseItemWidth });
+                    rowItems.push({ type: 'empty', width: tileWidth });
                     continue;
                 }
                 
@@ -587,15 +599,15 @@ class TerminalGUI {
                 const isSelected = index === this.selectedIndex;
                 
                 if (item.type === 'directory') {
-                    // const itemWidth = Math.max(minOtherWidth, baseItemWidth);
-                    const itemWidth = Math.max(minImageWidth, baseItemWidth);
+                    const itemWidth = tileWidth;
                     const icon = '📁';
                     const name = item.name;
                     const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
                     const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 3));
                     const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
                     // const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
-                    const displayText = `${displayName}${padding}`;
+                    // const displayText = `${displayName}${padding}`;
+                    const displayText = `\x1b]66;s=3;${item.name}\x07`;
                     
                     // rowItems.push({
                     //     type: 'directory',
@@ -604,21 +616,21 @@ class TerminalGUI {
                     // });
                     const folderData = await this.generator.generate('src/assets/dir.svg', 32, 32);
         
-                    const folderIcon = this.renderThumbnail(folderData, itemWidth, isSelected, item.name);
+                    const folderIcon = this.renderThumbnail(folderData, itemWidth, isSelected, item.name, this.useTripleText);
         
 
                     rowItems.push({
                         type: 'image',
                         content: folderIcon,
                         width: itemWidth,
-                        name: displayName
+                        name: displayText
                     });
                 } else if (this.isMediaFile(item.name)) {
-                    const itemWidth = Math.max(minImageWidth, baseItemWidth);
+                    const itemWidth = tileWidth;
                     try {
                         const thumbnailData = await this.generateThumbnail(item.path);
                         if (thumbnailData && thumbnailData.length > 0) {
-                            const thumbnailLines = this.renderThumbnail(thumbnailData, itemWidth, isSelected, item.name);
+                            const thumbnailLines = this.renderThumbnail(thumbnailData, itemWidth, isSelected, item.name, this.useTripleText);
                             rowItems.push({
                                 type: 'image',
                                 content: thumbnailLines,
@@ -626,18 +638,28 @@ class TerminalGUI {
                                 name: item.name
                             });
                         } else {
-                            const icon = '📄';
                             const name = item.name;
-                            const displayName = name.length > itemWidth - 6 ? name.substring(0, itemWidth - 7) + '...' : name;
-                            const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
-                            const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
-                            const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
-                            
-                            rowItems.push({
-                                type: 'fallback',
-                                content: `${color}${displayText}\x1b[0m`,
-                                width: itemWidth
-                            });
+                            const trimmed = name.length > itemWidth - 2 ? name.substring(0, itemWidth - 5) + '...' : name;
+                            if (this.useTripleText) {
+                                const leftPadding = Math.max(0, Math.floor((itemWidth - trimmed.length) / 2));
+                                const rightPadding = Math.max(0, itemWidth - trimmed.length - leftPadding);
+                                const oscTriple = `\x1b]66;s=3;${trimmed}\x07`;
+                                rowItems.push({
+                                    type: 'fallback',
+                                    content: `${' '.repeat(leftPadding)}${oscTriple}${' '.repeat(rightPadding)}`,
+                                    width: itemWidth
+                                });
+                            } else {
+                                const icon = '📄';
+                                const padding = ' '.repeat(Math.max(0, itemWidth - trimmed.length - 2));
+                                const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
+                                const displayText = `  ${icon} ${trimmed}${padding}`;
+                                rowItems.push({
+                                    type: 'fallback',
+                                    content: `${color}${displayText}\x1b[0m`,
+                                    width: itemWidth
+                                });
+                            }
                         }
                     } catch (error) {
                         const icon = '📄';
@@ -654,19 +676,29 @@ class TerminalGUI {
                         });
                     }
                 } else {
-                    const itemWidth = Math.max(minOtherWidth, baseItemWidth);
-                    const icon = '📄';
+                    const itemWidth = tileWidth;
                     const name = item.name;
-                    const displayName = name.length > itemWidth - 4 ? name.substring(0, itemWidth - 7) + '...' : name;
-                    const padding = ' '.repeat(Math.max(0, itemWidth - displayName.length - 2));
-                    const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
-                    const displayText = isSelected ? `▶ ${icon} ${displayName}${padding}` : `  ${icon} ${displayName}${padding}`;
-                    
-                    rowItems.push({
-                        type: 'file',
-                        content: `${color}${displayText}\x1b[0m`,
-                        width: itemWidth
-                    });
+                    const trimmed = name.length > itemWidth - 2 ? name.substring(0, itemWidth - 5) + '...' : name;
+                    if (this.useTripleText) {
+                        const leftPadding = Math.max(0, Math.floor((itemWidth - trimmed.length) / 2));
+                        const rightPadding = Math.max(0, itemWidth - trimmed.length - leftPadding);
+                        const oscTriple = `\x1b]66;s=3;${trimmed}\x07`;
+                        rowItems.push({
+                            type: 'file',
+                            content: `${' '.repeat(leftPadding)}${oscTriple}${' '.repeat(rightPadding)}`,
+                            width: itemWidth
+                        });
+                    } else {
+                        const icon = '📄';
+                        const padding = ' '.repeat(Math.max(0, itemWidth - trimmed.length - 2));
+                        const color = isSelected ? '\x1b[1m\x1b[36m' : '\x1b[0m';
+                        const displayText = `  ${icon} ${trimmed}${padding}`;
+                        rowItems.push({
+                            type: 'file',
+                            content: `${color}${displayText}\x1b[0m`,
+                            width: itemWidth
+                        });
+                    }
                 }
             }
             
