@@ -7,18 +7,18 @@ class Event {
         this.listeners = {};
 
         process.stdin.on('data', (key) => {
-            // Exit on Ctrl+C
+            // Ctrl+C
             if (key === '\u0003') process.exit();
 
             const parsed = this.parseKey(key);
 
-            // Always fire the generic "key" event
+            // (e.g. key)
             this.emit('key', parsed);
 
-            // Fire simple name (e.g. key:a)
+            // (e.g. key:a)
             this.emit(`key:${parsed.name}`, parsed);
 
-            // Fire combo name (e.g. key:ctrl+a)
+            // (e.g. key:ctrl+a)
             let combo = [];
             if (parsed.ctrl) combo.push('ctrl');
             if (parsed.alt) combo.push('alt');
