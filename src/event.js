@@ -6,6 +6,7 @@ class Event {
 
         this.listeners = {};
 
+        // Key Press
         process.stdin.on('data', (key) => {
             // Ctrl+C
             if (key === '\u0003') process.exit();
@@ -25,6 +26,14 @@ class Event {
             if (parsed.shift) combo.push('shift');
             combo.push(parsed.name);
             this.emit(`key:${combo.join('+')}`, parsed);
+        });
+
+        // Resize
+        process.stdout.on('resize', () => {
+            this.emit('resize', {
+                cols: process.stdout.columns,
+                rows: process.stdout.rows
+            });
         });
     }
 
