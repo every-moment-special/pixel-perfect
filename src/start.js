@@ -1,13 +1,9 @@
 const { exec } = require('child_process');
 const { setTerminalFontSize, isKitty } = require('./helper');
-const { TerminalGUI } = require('./run.js');
 const Interface = require('./interface.js');
-const Terminal = require('./terminal.js');
-const { render } = require('./helper');
+const { render } = require('./vdom');
 
 async function main() {
-  const terminal = new Terminal();
-
   if (isKitty) {
     await setTerminalFontSize(1);
   }

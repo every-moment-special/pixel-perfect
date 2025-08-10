@@ -1,28 +1,28 @@
-// Minimal Virtual DOM
+const { terminal } = require('./helper.js');
 
 function isPrimitive(value) {
   return typeof value === 'string' || typeof value === 'number';
 }
 
-function flattenChildren(children) {
+function flattenContent(content) {
   const flat = [];
-  for (const child of children) {
-    if (Array.isArray(child)) {
-      flat.push(...flattenChildren(child));
-    } else if (child === null || child === undefined || child === false) {
+  for (const c of content) {
+    if (Array.isArray(c)) {
+      flat.push(...flattenContent(c));
+    } else if (c === null || c === undefined || c === false) {
       // skip
     } else {
-      flat.push(child);
+      flat.push(c);
     }
   }
   return flat;
 }
 
-function h(type, props, ...children) {
-  const normalizedChildren = flattenChildren(children).map((c) =>
-    isPrimitive(c) ? { type: 'text', props: { text: String(c) }, children: [] } : c
+const element = (type, style = {}, ...content) => {
+  const normalizedContent = flattenContent(content).map((c) =>
+    isPrimitive(c) ? { type: 'text', style: {}, content: c } : c
   );
-  return { type, props: props || {}, children: normalizedChildren };
+  return { type, style: style || {}, content: normalizedContent };
 }
 
 function createBuffer(width, height) {
@@ -76,52 +76,46 @@ function drawBox(buffer, x, y, width, height, title) {
   }
 }
 
-function renderToBuffer(node, buffer, offsetX = 0, offsetY = 0) {
+function renderToBuffer(node, buffer, offsetX = 0, offsetY = 0, depth = 0) {
   if (!node) return;
 
-  // Treat arrays as fragments
   if (Array.isArray(node)) {
-    for (const child of node) renderToBuffer(child, buffer, offsetX, offsetY);
+    for (const c of node) renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
     return;
   }
 
-  const { type, props = {}, children = [] } = node;
+  const { type, style = {}, content = [] } = node;
 
   if (type === 'text') {
-    const x = (props.x || 0) + offsetX;
-    const y = (props.y || 0) + offsetY;
-    const text = props.text != null ? String(props.text) : '';
+    const x = (style.x || 0) + offsetX;
+    const y = (style.y || 0) + offsetY;
+    const text = content != null ? String(content) : '';
     writeToBuffer(buffer, x, y, text);
     return;
   }
 
-  if (type === 'panel') {
-    const x = (props.x || 0) + offsetX;
-    const y = (props.y || 0) + offsetY;
-    const width = props.width || 10;
-    const height = props.height || 5;
-    const title = props.title || '';
-    drawBox(buffer, x, y, width, height, title);
+  if (type === 'div') {
+    const x = (style.x || 0) + offsetX;
+    const y = (style.y || 0) + offsetY;
+    const width = style.width || terminal.width;
+    const height = style.height || terminal.height;
 
-    // Render children inside the box content area (1px inset)
-    for (const child of children) {
-      renderToBuffer(child, buffer, x + 1, y + 1);
+    for (const c of content) {
+      renderToBuffer(c, buffer, x, y, depth + 1);
     }
     return;
   }
 
-  // Fragment or unknown: recurse into children without drawing
-  for (const child of children) renderToBuffer(child, buffer, offsetX, offsetY);
+  for (const c of content) renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
 }
 
-function render(rootVNode, terminal) {
+function render(root) {
   const width = Math.max(1, terminal.width || 80);
   const height = Math.max(1, terminal.height || 24);
 
   const buffer = createBuffer(width, height);
-  renderToBuffer(rootVNode, buffer, 0, 0);
+  renderToBuffer(root, buffer, 0, 0);
 
-  // Flush to terminal
   process.stdout.write('\x1b[2J\x1b[H');
   for (let y = 0; y < height; y++) {
     process.stdout.write(buffer[y].join(''));
@@ -130,5 +124,4 @@ function render(rootVNode, terminal) {
   process.stdout.write(`\x1b[${height};1H`);
 }
 
-module.exports = { h, render };
-
+module.exports = { element, render };

@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const Item = require('./item');
 const Terminal = require('./terminal.js');
-const { render: renderVDOM } = require('./vdom');
 
 const terminal = new Terminal();
 const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
@@ -79,11 +78,6 @@ const readDirectory = (currentPath) => {
     }
 }
 
-// Render a VNode tree to the terminal using the virtual DOM buffer
-const render = (vnode) => {
-  return renderVDOM(vnode, terminal);
-}
-
 module.exports = {
     setTerminalFontSize,
     readDirectory,
@@ -92,5 +86,4 @@ module.exports = {
     extensions,
     terminal,
     colors,
-    render,
 }
