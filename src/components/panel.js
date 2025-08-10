@@ -12,7 +12,7 @@ const Panel = (style = {}, content = []) => {
 
   return [
     element('div', style, content = [
-      element('text', style = { color: 'white', backgroundColor: 'blue', width: 10, height: 3, textAlign: 'center', verticalAlign: 'middle' }, content = ['test'])
+      element('text', style = { color: 'blue', backgroundColor: 'black', width: 100, height: 30, textAlign: 'center', verticalAlign: 'middle', fontSize: 3, pixelFont: true, border: { width: 1, color: 'white' } }, content = ['test'])
     ])
   ];
 }
