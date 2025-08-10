@@ -94,13 +94,48 @@ const renderToBuffer = (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
     const text = content != null ? String(content[0]?.content ?? content) : '';
     const fgColor = style.color || 'white';
     const bgColor = style.backgroundColor || 'black';
-
-    for (let i = 0; i < text.length; i++) {
-      const cx = x + i;
-      if (y >= 0 && y < buffer.length && cx >= 0 && cx < buffer[0].length) {
-        buffer[y][cx].char = text[i];
-        buffer[y][cx].fgColor = fgColor;
-        buffer[y][cx].bgColor = bgColor;
+    const width = style.width || text.length;
+    const height = style.height || 1;
+    const textAlign = style.textAlign || 'left'; // 'left', 'center', 'right'
+    const verticalAlign = style.verticalAlign || 'top'; // 'top', 'middle', 'bottom'
+  
+    let leftPadding = 0;
+    if (text.length < width) {
+      const space = width - text.length;
+      if (textAlign === 'center') {
+        leftPadding = Math.floor(space / 2);
+      } else if (textAlign === 'right') {
+        leftPadding = space;
+      }
+    }
+  
+    let startRow = 0;
+    if (height > 1) {
+      const emptyLines = height - 1;
+      if (verticalAlign === 'middle') {
+        startRow = Math.floor(emptyLines / 2);
+      } else if (verticalAlign === 'bottom') {
+        startRow = emptyLines;
+      }
+    }
+  
+    for (let h = 0; h < height; h++) {
+      for (let w = 0; w < width; w++) {
+        const cx = x + w;
+        const cy = y + h;
+        if (cy >= 0 && cy < buffer.length && cx >= 0 && cx < buffer[0].length) {
+          if (h === startRow) {
+            if (w < leftPadding || w >= leftPadding + text.length) {
+              buffer[cy][cx].char = ' ';
+            } else {
+              buffer[cy][cx].char = text[w - leftPadding] || ' ';
+            }
+          } else {
+            buffer[cy][cx].char = ' ';
+          }
+          buffer[cy][cx].fgColor = fgColor;
+          buffer[cy][cx].bgColor = bgColor;
+        }
       }
     }
     return;
@@ -117,10 +152,8 @@ const renderToBuffer = (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
       if (row < 0 || row >= buffer.length) continue;
       for (let col = x; col < x + width; col++) {
         if (col < 0 || col >= buffer[0].length) continue;
-        // Fill with space but with background color
         buffer[row][col].char = ' ';
         buffer[row][col].bgColor = bgColor;
-        // Optionally keep fgColor as is or set to default (white)
         buffer[row][col].fgColor = buffer[row][col].fgColor || 'white';
       }
     }
