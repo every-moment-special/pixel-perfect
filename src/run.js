@@ -325,7 +325,7 @@ class TerminalGUI {
         }
 
         try {
-            const thumbnailData = await this.generator.generate(imagePath, 32, 32);
+            const thumbnailData = await this.generator.generate(imagePath, 64, 64);
             this.thumbnailCache.set(imagePath, thumbnailData);
             return thumbnailData;
         } catch (error) {
@@ -336,11 +336,11 @@ class TerminalGUI {
 
     renderThumbnail(thumbnailData, itemWidth, isSelected, filename, useTripleText = false) {
         const lines = [];
-        const maxHeight = 16;
+        const maxHeight = 33;
         
         const grid = Array(maxHeight).fill().map(() => Array(itemWidth).fill(' '));
         
-        const thumbnailWidth = Math.min(32, itemWidth - 2);
+        const thumbnailWidth = Math.min(64, itemWidth - 2);
         const startX = Math.floor((itemWidth - thumbnailWidth) / 2);
         
         thumbnailData.forEach(cell => {
@@ -409,7 +409,7 @@ class TerminalGUI {
         const gapWidth = 2;
         const availableWidth = this.terminalWidth - 2;
         
-        const minImageWidth = 32;
+        const minImageWidth = 64;
         const minOtherWidth = 20;
         
         const columns = Math.floor(availableWidth / (minImageWidth + gapWidth));
@@ -419,8 +419,8 @@ class TerminalGUI {
 
         const totalWidth = (actualColumns * minImageWidth) + ((actualColumns - 1) * gapWidth);
 
-        const tripleItemHeight = 19; // 16 image + 3 text
-        const normalItemHeight = 17; // 16 image + 1 text
+        const tripleItemHeight = 35; // 16 image + 3 text
+        const normalItemHeight = 33; // 16 image + 1 text
         const useTripleText = (minImageWidth * tripleItemHeight) >= 500;
         this.useTripleText = useTripleText;
 
@@ -614,7 +614,7 @@ class TerminalGUI {
                     //     content: `${color}${displayText}\x1b[0m`,
                     //     width: itemWidth
                     // });
-                    const folderData = await this.generator.generate('src/assets/dir.svg', 32, 32);
+                    const folderData = await this.generator.generate('src/assets/dir.svg', 64, 64);
         
                     const folderIcon = this.renderThumbnail(folderData, itemWidth, isSelected, item.name, this.useTripleText);
         
@@ -1086,11 +1086,11 @@ class TerminalGUI {
                 
                 if (this.viewMode === 'grid') {
                     const { columns, gapWidth } = this.calculateGridDimensions();
-                    const minImageWidth = 32;
+                    const minImageWidth = 64;
                     const minOtherWidth = 20;
                     const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
                     const baseItemWidth = Math.floor(availableWidth / columns);
-                    const itemHeight = 17;
+                    const itemHeight = 33;
                     
                     const row = Math.floor((adjustedY - headerHeight) / itemHeight);
                     let col = 0;
@@ -1112,7 +1112,7 @@ class TerminalGUI {
                         
                         if (relativeY >= 15) {
                             clickedOnFilename = true;
-                        } else if (relativeY >= 0 && relativeY < 16) {
+                        } else if (relativeY >= 0 && relativeY < 24) {
                             clickedOnPreview = true;
                         }
                     }
@@ -1166,7 +1166,7 @@ class TerminalGUI {
                         const minOtherWidth = 20;
                         const availableWidth = this.terminalWidth - 2 - (gapWidth * (columns - 1));
                         const baseItemWidth = Math.floor(availableWidth / columns);
-                        const itemHeight = 17;
+                        const itemHeight = 33;
                         
                         const row = Math.floor((adjustedY - headerHeight) / itemHeight);
                         let col = 0;
