@@ -2,9 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { Generator } = require('./generate');
-const { setFontSize, isKitty } = require('./start');
-
-const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
+const { setTerminalFontSize, extensions, isKitty } = require('./helper');
 
 class ImageGallerySlider {
     constructor(imagePaths, startIndex = 0, generator) {
@@ -267,7 +265,7 @@ class TerminalGUI {
 
     isMediaFile(filename) {
         const ext = path.extname(filename).toLowerCase();
-        return SUPPORTED_EXTENSIONS.includes(ext);
+        return extensions.includes(ext);
     }
 
     getMediaFiles() {
@@ -1335,7 +1333,7 @@ class TerminalGUI {
 
     quit() {
         if (isKitty) {
-            setFontSize(9);
+            setTerminalFontSize(9);
         }
         if (this.mouseEnabled) {
             process.stdout.write('\x1b[?1000l');

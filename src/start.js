@@ -1,26 +1,22 @@
 const { exec } = require('child_process');
+const { setTerminalFontSize, isKitty } = require('./helper');
 const { TerminalGUI } = require('./run.js');
-
-const isKitty = !!process.env.KITTY_WINDOW_ID;
-
-function setFontSize(size) {
-  return new Promise((resolve, reject) => {
-    exec(`kitty @ set-font-size ${size}`, (err, stdout, stderr) => {
-      if (err) return reject(err);
-      resolve(stdout.trim());
-    });
-  });
-}
+const Interface = require('./interface.js');
+const Terminal = require('./terminal.js');
+const { render } = require('./helper');
 
 async function main() {
+  const terminal = new Terminal();
+
   if (isKitty) {
-    await setFontSize(1);
+    await setTerminalFontSize(1);
   }
 
 
   try {
-    const gui = new TerminalGUI();
-    await gui.start();
+    const interface = Interface();
+    render(interface);
+    // await gui.start();
 
   } catch (err) {
     console.error("Startup error:", err);
@@ -32,7 +28,7 @@ async function shutdown() {
   console.log("Running cleanup...");
   try {
     if (isKitty) {
-      await setFontSize(9);
+      await setTerminalFontSize(9);
     }
     console.log("Font size restored.");
   } catch (err) {
@@ -51,4 +47,4 @@ process.on('uncaughtException', err => {
 
 main();
 
-module.exports = { setFontSize, isKitty };
+module.exports = { isKitty };

@@ -2,8 +2,34 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const Item = require('./item');
+const Terminal = require('./terminal.js');
+const { render: renderVDOM } = require('./vdom');
 
-const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
+const terminal = new Terminal();
+const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
+const terminalType = process.env.TERM;
+const isKitty = !!process.env.KITTY_WINDOW_ID;
+
+const RESET = "\x1b[0m";
+const RED = "\x1b[31m";
+const GREEN = "\x1b[32m";
+const YELLOW = "\x1b[33m";
+const BLUE = "\x1b[34m";
+const MAGENTA = "\x1b[35m";
+const CYAN = "\x1b[36m";
+const WHITE = "\x1b[37m";
+
+const colors = {
+    reset: RESET,
+    red: RED,
+    green: GREEN,
+    yellow: YELLOW,
+    blue: BLUE,
+    magenta: MAGENTA,
+    cyan: CYAN,
+    white: WHITE,
+}
+
 
 const setTerminalFontSize = (size) => {
     return new Promise((resolve, reject) => {
@@ -20,7 +46,7 @@ const isDirectory = (filename) => {
 
 const isMedia = (filename) => {
     const ext = path.extname(filename).toLowerCase();
-    return SUPPORTED_EXTENSIONS.includes(ext);
+    return extensions.includes(ext);
 }
 
 const readDirectory = (currentPath) => {
@@ -53,7 +79,18 @@ const readDirectory = (currentPath) => {
     }
 }
 
+// Render a VNode tree to the terminal using the virtual DOM buffer
+const render = (vnode) => {
+  return renderVDOM(vnode, terminal);
+}
+
 module.exports = {
     setTerminalFontSize,
     readDirectory,
+    isKitty,
+    terminalType,
+    extensions,
+    terminal,
+    colors,
+    render,
 }
