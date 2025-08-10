@@ -9,26 +9,18 @@ const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '
 const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
-const RESET = "\x1b[0m";
-const RED = "\x1b[31m";
-const GREEN = "\x1b[32m";
-const YELLOW = "\x1b[33m";
-const BLUE = "\x1b[34m";
-const MAGENTA = "\x1b[35m";
-const CYAN = "\x1b[36m";
-const WHITE = "\x1b[37m";
-
 const colors = {
-    reset: RESET,
-    red: RED,
-    green: GREEN,
-    yellow: YELLOW,
-    blue: BLUE,
-    magenta: MAGENTA,
-    cyan: CYAN,
-    white: WHITE,
-}
-
+    white: '\x1b[37m',
+    red: '\x1b[31m',
+    blue: '\x1b[34m',
+    cyan: '\x1b[36m',
+    bgwhite: '\x1b[47m',
+    bgred: '\x1b[41m',
+    bgblue: '\x1b[44m',
+    bgcyan: '\x1b[46m',
+    reset: '\x1b[0m',
+    bgReset: '\x1b[49m',
+};
 
 const setTerminalFontSize = (size) => {
     return new Promise((resolve, reject) => {
