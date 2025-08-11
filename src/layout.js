@@ -48,6 +48,17 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
   const style = node.computedStyle || node.style || {};
   const type = node.type || 'div';
 
+  // Handle display: none early
+  if (style.display === 'none') {
+    const absXNone = parentAbsX + (style.x ?? 0);
+    const absYNone = parentAbsY + (style.y ?? 0);
+    return {
+      ...node,
+      frame: { x: absXNone, y: absYNone, width: 0, height: 0 },
+      content: [],
+    };
+  }
+
   // Measure
   let measuredWidth = 0;
   let measuredHeight = 0;
@@ -78,7 +89,83 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
   };
 
   const children = Array.isArray(node.content) ? node.content : (node.content != null ? [node.content] : []);
-  const laidOutChildren = children.map((child) => computeLayoutTree(child, terminal, frame.x, frame.y));
+  let laidOutChildren = children.map((child) => computeLayoutTree(child, terminal, frame.x, frame.y));
+
+  // If container uses grid, lay out children with wrapping and justifyContent per row
+  if (style.display === 'grid' && laidOutChildren.length > 0) {
+    const containerWidth = frame.width;
+    const gap = Math.max(0, Number(style.gap) || 0);
+
+    // Build rows by wrapping when exceeding container width
+    /** @type {Array<{items:any[], rowWidth:number, rowHeight:number}>} */
+    const rows = [];
+    let currentRowItems = [];
+    let currentRowWidth = 0; // sum of item widths only (gaps handled separately)
+    let currentRowHeight = 0;
+
+    const finalizeRow = () => {
+      rows.push({ items: currentRowItems, rowWidth: currentRowWidth, rowHeight: currentRowHeight });
+      currentRowItems = [];
+      currentRowWidth = 0;
+      currentRowHeight = 0;
+    };
+
+    for (const ch of laidOutChildren) {
+      const chWidth = (ch && ch.frame && ch.frame.width) || 0;
+      const chHeight = (ch && ch.frame && ch.frame.height) || 0;
+
+      // Compute prospective width including fixed gaps between items
+      const gapsSoFar = Math.max(0, currentRowItems.length - 1) * gap;
+      const wouldExceed = currentRowItems.length > 0 && (currentRowWidth + chWidth + gapsSoFar) > containerWidth;
+      if (wouldExceed) finalizeRow();
+
+      currentRowItems.push(ch);
+      currentRowWidth += chWidth;
+      if (chHeight > currentRowHeight) currentRowHeight = chHeight;
+    }
+    if (currentRowItems.length > 0) finalizeRow();
+
+    // Position rows according to justifyContent per row
+    let cursorY = frame.y;
+    const placed = [];
+    for (const row of rows) {
+      const count = row.items.length;
+      let startX = frame.x;
+      let extraGap = 0;
+      const fixedGapsWidth = Math.max(0, count - 1) * gap;
+      const contentWidth = row.rowWidth + fixedGapsWidth;
+      switch (style.justifyContent) {
+        case 'center':
+          startX = frame.x + Math.floor((containerWidth - contentWidth) / 2);
+          break;
+        case 'end':
+          startX = frame.x + (containerWidth - contentWidth);
+          break;
+        case 'space-between':
+          if (count > 1) {
+            const free = containerWidth - contentWidth;
+            extraGap = free > 0 ? Math.floor(free / (count - 1)) : 0;
+          }
+          break;
+        case 'start':
+        default:
+          // start at frame.x
+          break;
+      }
+
+      let cursorX = startX;
+      for (const ch of row.items) {
+        const chWidth = (ch && ch.frame && ch.frame.width) || 0;
+        const updated = { ...ch, frame: { ...ch.frame, x: cursorX, y: cursorY } };
+        placed.push(updated);
+        cursorX += chWidth + gap + extraGap;
+      }
+
+      cursorY += row.rowHeight + Math.floor(gap / 2); // vertical gap is half
+    }
+
+    laidOutChildren = placed;
+  }
 
   return {
     ...node,

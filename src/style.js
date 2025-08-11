@@ -35,6 +35,8 @@
  * @property {boolean} pixelFont
  * @property {NormalizedBorder} border
  * @property {'none'|'block'|'grid'} display // 'none', 'block', 'grid'
+ * @property {'start'|'center'|'end'|'space-between'} justifyContent
+ * @property {number} gap // integer >= 0; spacing for grid columns and rows
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -75,6 +77,9 @@ const baseDefaults = Object.freeze({
   fontSize: 1,
   pixelFont: false,
   border: { width: 0, color: 'white', style: 'quarter' },
+  display: 'block',
+  justifyContent: 'start',
+  gap: 0,
 });
 
 const defaultsByType = Object.freeze({
@@ -160,6 +165,15 @@ function normalizeStyle(type, rawStyle) {
   // Border
   const border = normalizeBorder(type, s, d);
 
+  // Layout model
+  const display = oneOf(s.display, ['none', 'block', 'grid'], d.display || 'block');
+  const justifyContent = oneOf(
+    s.justifyContent,
+    ['start', 'center', 'end', 'space-between'],
+    d.justifyContent || 'start'
+  );
+  const gap = Math.max(0, coerceInteger(s.gap, d.gap || 0));
+
   return {
     x,
     y,
@@ -172,6 +186,9 @@ function normalizeStyle(type, rawStyle) {
     fontSize,
     pixelFont,
     border,
+    display,
+    justifyContent,
+    gap,
   };
 }
 

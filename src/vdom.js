@@ -87,6 +87,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
   const content = Array.isArray(node.content) ? node.content : (node.content != null ? [node.content] : []);
 
   if (type === 'text') {
+    if (style.display === 'none') return;
     const frame = node.frame;
     const x = frame.x;
     const y = frame.y;
@@ -232,6 +233,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
   }
 
   if (type === 'img') {
+    if (style.display === 'none') return;
     const frame = node.frame;
     const x = frame.x;
     const y = frame.y;
@@ -257,6 +259,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
   }
 
   if (type === 'div') {
+    if (style.display === 'none') return;
     const frame = node.frame;
     const x = frame.x;
     const y = frame.y;
