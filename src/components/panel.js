@@ -8,6 +8,7 @@ const Panel = (style = {}, content = []) => {
 
   const mediaItems = items.filter(item => item.type === 'media');
   const itemCount = mediaItems.length;
+  // Clamp selected index to valid range [0, itemCount - 1]
   const selected = itemCount > 0
     ? Math.max(0, Math.min(state.selectedIndex || 0, itemCount - 1))
     : 0;
@@ -57,7 +58,7 @@ const Panel = (style = {}, content = []) => {
         mediaItems.map((item, index) => {
           const isSelected = selected === index;
           if (item.type === 'media') {
-            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
+            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'black', overflow: 'hidden', zIndex: 0 }, [
               element(
                 'img',
                 { 
@@ -69,7 +70,7 @@ const Panel = (style = {}, content = []) => {
                   verticalAlign: 'top',
                   fontSize: 2,
                   pixelFont: true,
-                  backgroundColor: 'blue',
+                  backgroundColor: 'black',
                   overflow: 'hidden',
                   zIndex: 0,
                 },
@@ -78,7 +79,7 @@ const Panel = (style = {}, content = []) => {
 
               element(
                 'text',
-                { 
+                {
                   // x: (index * 64) + (index * 5),
                   width: 64,
                   // y: 2 + 32 + 1,
@@ -86,7 +87,7 @@ const Panel = (style = {}, content = []) => {
                   verticalAlign: 'bottom',
                   fontSize: 1,
                   pixelFont: true,
-                  backgroundColor: 'transparent',
+                  backgroundColor: 'black',
                   zIndex: 0,
                   color: isSelected ? 'cyan' : 'gray',
                 },

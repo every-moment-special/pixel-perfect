@@ -18,11 +18,13 @@ const currentPath = process.cwd();
 
 const colors = {
     black: '\x1b[30m',
+    gray: '\x1b[90m',
     white: '\x1b[37m',
     red: '\x1b[31m',
     blue: '\x1b[34m',
     cyan: '\x1b[36m',
     bgblack: '\x1b[40m',
+    bggray: '\x1b[100m',
     bgwhite: '\x1b[47m',
     bgred: '\x1b[41m',
     bgblue: '\x1b[44m',

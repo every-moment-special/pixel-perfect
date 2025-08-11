@@ -114,6 +114,7 @@ async function main() {
       if (count === 0) return;
       const prev = state.selectedIndex || 0;
       const next = (prev - 1 + count) % count;
+      if (next < 0) return;
       if (next === prev) return;
       state.selectedIndex = next;
       tree = Interface();
@@ -127,6 +128,7 @@ async function main() {
       if (count === 0) return;
       const prev = state.selectedIndex || 0;
       const next = (prev + 1) % count;
+      if (next > count) return;
       if (next === prev) return;
       state.selectedIndex = next;
       tree = Interface();

@@ -40,13 +40,15 @@ class Event {
             // (e.g. key:a)
             this.emit(`key:${parsed.name}`, parsed);
 
-            // (e.g. key:ctrl+a)
+            // (e.g. key:ctrl+a). Only emit combo when a modifier exists to avoid duplicates.
             let combo = [];
             if (parsed.ctrl) combo.push('ctrl');
             if (parsed.alt) combo.push('alt');
             if (parsed.shift) combo.push('shift');
-            combo.push(parsed.name);
-            this.emit(`key:${combo.join('+')}`, parsed);
+            if (combo.length > 0) {
+                combo.push(parsed.name);
+                this.emit(`key:${combo.join('+')}`, parsed);
+            }
         });
 
         // Resize
