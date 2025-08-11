@@ -19,6 +19,9 @@ async function main() {
     // Disable terminal local echo as an extra safeguard (if supported)
     process.stdout.write('\x1b[?12l');
 
+    // Enable mouse tracking (SGR) so we can receive click events
+    try { event.enableMouse(); } catch (_) {}
+
     let tree = Interface();
     let laidOut = await render(tree);
     // Extra paint shortly after start to wipe any startup logs (e.g., inspector message)
@@ -189,6 +192,37 @@ async function main() {
       const next = Math.max(0, Math.min(target, max));
       if (next === prev) return;
       state.scrollY = next;
+      tree = Interface();
+      laidOut = await render(tree);
+    });
+
+    // Mouse left click selects item
+    const getTileIndexAtPoint = (container, px, py) => {
+      if (!container) return -1;
+      const children = Array.isArray(container.content) ? container.content : [];
+      for (let i = 0; i < children.length; i++) {
+        const ch = children[i];
+        const f = ch && ch.frame;
+        if (!f) continue;
+        if (px >= f.x && px < f.x + f.width && py >= f.y && py < f.y + f.height) {
+          return i;
+        }
+      }
+      return -1;
+    };
+
+    event.on('click', async ({ x, y, button }) => {
+      if (button !== 0) return; // only left click
+      const ctx = getGridContext();
+      if (!ctx) return;
+      const px = Math.max(0, (x || 1) - 1);
+      const py = Math.max(0, (y || 1) - 1);
+      const hit = getTileIndexAtPoint(ctx.container, px, py);
+      if (hit < 0 || hit >= ctx.itemCount) return;
+      if (state.selectedIndex === hit) return;
+      state.selectedIndex = hit;
+      const rowIndex = Math.floor(hit / Math.max(1, ctx.columns));
+      ensureRowVisible(ctx, rowIndex);
       tree = Interface();
       laidOut = await render(tree);
     });

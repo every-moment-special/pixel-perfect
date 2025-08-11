@@ -11,7 +11,7 @@ class Event {
         try { process.stdin.resume(); } catch (_) {}
 
         this.listeners = {};
-        // this.enableMouse();
+        this.enableMouse();
         this.disableMouse();
 
         // Put TTY into raw, no-echo, non-canonical mode so input bytes are not printed
