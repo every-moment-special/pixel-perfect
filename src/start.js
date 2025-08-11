@@ -162,17 +162,27 @@ async function main() {
             state.scrollY = 0;
             tree = Interface();
             laidOut = await render(tree);
+          } else if (selectedItem.type === 'media') {
+            state.view = 'photo';
+            state.photoPath = selectedItem.path;
+            tree = Interface();
+            laidOut = await render(tree);
           }
         }
       }
     });
 
     event.on('key:backspace', async () => {
-      const parentPath = path.dirname(state.currentPath);
-      if (!parentPath || parentPath === state.currentPath) return;
-      state.currentPath = parentPath;
-      state.selectedIndex = 0;
-      state.scrollY = 0;
+      if (state.view === 'photo') {
+        state.view = 'grid';
+        state.photoPath = null;
+      } else {
+        const parentPath = path.dirname(state.currentPath);
+        if (!parentPath || parentPath === state.currentPath) return;
+        state.currentPath = parentPath;
+        state.selectedIndex = 0;
+        state.scrollY = 0;
+      }
       tree = Interface();
       laidOut = await render(tree);
     });
@@ -247,23 +257,28 @@ async function main() {
     };
 
     event.on('click', async ({ x, y, button }) => {
+      // Right click: works even when not in grid view
+      if (button === 2) {
+        if (state.view === 'photo') {
+          state.view = 'grid';
+          state.photoPath = null;
+        } else {
+          const parentPath = path.dirname(state.currentPath);
+          if (parentPath && parentPath !== state.currentPath) {
+            state.currentPath = parentPath;
+            state.selectedIndex = 0;
+            state.scrollY = 0;
+          }
+        }
+        tree = Interface();
+        laidOut = await render(tree);
+        return;
+      }
+
       const ctx = getGridContext();
       if (!ctx) return;
       const px = Math.max(0, (x || 1) - 1);
       const py = Math.max(0, (y || 1) - 1);
-      
-      // Right click -> go back one directory
-      if (button === 2) {
-        const parentPath = path.dirname(state.currentPath);
-        if (parentPath && parentPath !== state.currentPath) {
-          state.currentPath = parentPath;
-          state.selectedIndex = 0;
-          state.scrollY = 0;
-          tree = Interface();
-          laidOut = await render(tree);
-        }
-        return;
-      }
 
       // Only handle selection/double-open for left click
       if (button !== 0) return;
@@ -283,10 +298,15 @@ async function main() {
       if (isDoubleClick) {
         const items = readDirectory(state.currentPath);
         const selectedItem = items[hit];
-        if (selectedItem && selectedItem.type === 'directory') {
-          state.currentPath = path.join(state.currentPath, selectedItem.name);
-          state.selectedIndex = 0;
-          state.scrollY = 0;
+        if (selectedItem) {
+          if (selectedItem.type === 'directory') {
+            state.currentPath = path.join(state.currentPath, selectedItem.name);
+            state.selectedIndex = 0;
+            state.scrollY = 0;
+          } else if (selectedItem.type === 'media') {
+            state.view = 'photo';
+            state.photoPath = selectedItem.path;
+          }
         }
       }
 

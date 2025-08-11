@@ -7,6 +7,8 @@ const state = {
   scrollY: 0,
   selectedIndex: 0,
   currentPath: path.join(__dirname, '..', 'resources'),
+  view: 'grid',
+  photoPath: null,
 };
 
 module.exports = { state };
