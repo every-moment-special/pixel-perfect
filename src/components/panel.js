@@ -21,7 +21,7 @@ const Panel = (style = {}, content = []) => {
           pixelFont: true,
           backgroundColor: 'transparent'
         },
-        'test'
+        `size: ${terminal.width}x${terminal.height - 5}`
       )
     ]),
     element('div', { width: terminal.width, height: terminal.height - 5, y: 7, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true, display: 'grid', gap: 5 }, [

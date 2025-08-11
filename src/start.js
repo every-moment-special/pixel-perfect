@@ -11,12 +11,18 @@ async function main() {
 
 
   try {
-    const interface = Interface();
-    render(interface);
+    let tree = Interface();
+    render(tree);
     // await gui.start();
 
-    event.on('resize', (size) => {
-      render(interface);
+    // Rebuild interface on resize to pick up new terminal dims used inside node styles
+    let resizeTimer = null;
+    event.on('resize', () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        tree = Interface();
+        render(tree);
+      }, 50);
     });
 
   } catch (err) {
