@@ -34,9 +34,10 @@
  * @property {number} fontSize // integer >= 1
  * @property {boolean} pixelFont
  * @property {NormalizedBorder} border
- * @property {'none'|'block'|'grid'} display // 'none', 'block', 'grid'
+ * @property {'none'|'block'|'grid'|'flex'} display // 'none', 'block', 'grid', 'flex'
  * @property {'start'|'center'|'end'|'space-between'} justifyContent
  * @property {number} gap // integer >= 0; spacing for grid columns and rows
+ * @property {'row'|'column'} flexDirection
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -80,6 +81,7 @@ const baseDefaults = Object.freeze({
   display: 'block',
   justifyContent: 'start',
   gap: 0,
+  flexDirection: 'row',
 });
 
 const defaultsByType = Object.freeze({
@@ -166,13 +168,14 @@ function normalizeStyle(type, rawStyle) {
   const border = normalizeBorder(type, s, d);
 
   // Layout model
-  const display = oneOf(s.display, ['none', 'block', 'grid'], d.display || 'block');
+  const display = oneOf(s.display, ['none', 'block', 'grid', 'flex'], d.display || 'block');
   const justifyContent = oneOf(
     s.justifyContent,
     ['start', 'center', 'end', 'space-between'],
     d.justifyContent || 'start'
   );
   const gap = Math.max(0, coerceInteger(s.gap, d.gap || 0));
+  const flexDirection = oneOf(s.flexDirection, ['row', 'column'], d.flexDirection || 'row');
 
   return {
     x,
@@ -189,6 +192,7 @@ function normalizeStyle(type, rawStyle) {
     display,
     justifyContent,
     gap,
+    flexDirection,
   };
 }
 

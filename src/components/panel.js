@@ -27,41 +27,40 @@ const Panel = (style = {}, content = []) => {
     element('div', { width: terminal.width, height: terminal.height - 5, y: 7, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true, display: 'grid', gap: 5 }, [
       items.filter(item => item.type === 'media').map((item, index) => {
         if (item.type === 'media') {
-          return element(
-            'img',
-            { 
-              x: (index * 64) + (index * 5),
-              width: 64,
-              y: 2,
-              height: 32,
-              textAlign: 'left',
-              verticalAlign: 'top',
-              fontSize: 2,
-              pixelFont: true,
-              backgroundColor: 'blue'
-            },
-            item.path
-          );
+          return element('div', { display: 'flex', flexDirection: 'column', gap: 1 }, [
+            element(
+              'img',
+              { 
+                // x: (index * 64) + (index * 5),
+                width: 64,
+                // y: 2,
+                height: 32,
+                textAlign: 'left',
+                verticalAlign: 'top',
+                fontSize: 2,
+                pixelFont: true,
+                backgroundColor: 'blue'
+              },
+              item.path
+            ),
+
+            element(
+              'text',
+              { 
+                // x: (index * 64) + (index * 5),
+                width: 64,
+                // y: 2 + 32 + 1,
+                textAlign: 'center',
+                verticalAlign: 'top',
+                fontSize: 1,
+                pixelFont: true,
+                backgroundColor: 'transparent'
+              },
+              item.name
+            )
+          ]);
         }
       }),
-
-      items.filter(item => item.type === 'media').map((item, index) => {
-        if (item.type === 'media') {
-          return element(
-            'text',
-            { 
-              x: (index * 64) + (index * 5),
-              width: 64, y: 2 + 32 + 1,
-              textAlign: 'center',
-              verticalAlign: 'top',
-              fontSize: 1,
-              pixelFont: true,
-              backgroundColor: 'transparent'
-            },
-            item.name
-          );
-        }
-      })
     ])
   ];
 }
