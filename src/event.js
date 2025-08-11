@@ -120,6 +120,16 @@ class Event {
             return { name: paging[key], ctrl: false, alt: false, shift: false };
         }
 
+        // Enter (carriage return or newline)
+        if (key === '\r' || key === '\n') {
+            return { name: 'enter', ctrl: false, alt: false, shift: false };
+        }
+
+        // Backspace (BS or DEL)
+        if (key === '\u0008' || key === '\u007f') {
+            return { name: 'backspace', ctrl: false, alt: false, shift: false };
+        }
+
         const code = key.charCodeAt(0);
 
         // Ctrl + letter

@@ -147,6 +147,36 @@ async function main() {
       if (next !== current) state.scrollY = next;
     };
 
+    event.on('key:enter', async () => {
+      const ctx = getGridContext();
+      if (ctx) {
+        const items = readDirectory(state.currentPath);
+        const count = items.length;
+        if (count === 0) return;
+        const selectedIndex = state.selectedIndex || 0;
+        const selectedItem = items[selectedIndex];
+        if (selectedItem) {
+          if (selectedItem.type === 'directory') {
+            state.currentPath = path.join(state.currentPath, selectedItem.name);
+            state.selectedIndex = 0;
+            state.scrollY = 0;
+            tree = Interface();
+            laidOut = await render(tree);
+          }
+        }
+      }
+    });
+
+    event.on('key:backspace', async () => {
+      const parentPath = path.dirname(state.currentPath);
+      if (!parentPath || parentPath === state.currentPath) return;
+      state.currentPath = parentPath;
+      state.selectedIndex = 0;
+      state.scrollY = 0;
+      tree = Interface();
+      laidOut = await render(tree);
+    });
+
     event.on('key:up', async () => {
       const ctx = getGridContext();
       if (ctx) {

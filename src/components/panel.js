@@ -1,5 +1,5 @@
 const { element } = require('../vdom');
-const { terminal, readDirectory, currentPath, isKitty } = require('../helper');
+const { terminal, readDirectory, isKitty } = require('../helper');
 const { state } = require('../state');
 const { measurePixelFont } = require('../pixelFont');
 const path = require('path');
@@ -41,7 +41,7 @@ function truncateFilenameKeepExtension(filename, maxCellWidth, scale = 1) {
 }
 
 const Panel = (style = {}, content = []) => {
-  const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
+  const items = readDirectory(state.currentPath);
 
   const mediaItems = items.sort((a, b) => a.type.localeCompare(b.type));
   const itemCount = mediaItems.length;
@@ -73,7 +73,7 @@ const Panel = (style = {}, content = []) => {
           color: 'cyan',
           zIndex: 2,
         },
-        `${currentPath.split('/').pop()}`
+        `${(state.currentPath || '').split('/').pop()}`
       ),
       element('text', {
           // width: terminal.width,
