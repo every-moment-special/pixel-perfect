@@ -17,7 +17,7 @@ const Panel = (style = {}, content = []) => {
     x: 0,
     y: 0,
     width: terminal.width,
-    height: 5,
+    height: 10,
     backgroundColor: 'transparent',
     zIndex: 10,
     position: 'fixed',
@@ -27,21 +27,22 @@ const Panel = (style = {}, content = []) => {
     element('div', style, [
       element('text', {
           width: terminal.width,
+          height: 10,
           textAlign: 'center',
-          verticalAlign: 'top',
-          fontSize: 2,
+          verticalAlign: 'middle',
+          fontSize: 1,
           pixelFont: true,
           backgroundColor: 'transparent',
           color: 'white',
           zIndex: 1,
         },
-        `size: ${terminal.width}x${terminal.height * 2}`
+        `Size: ${terminal.width}x${terminal.height * 2}`
       )
     ]),
     element('div', {
         width: terminal.width,
-        height: terminal.height - 7,
-        y: 7,
+        height: terminal.height - 10,
+        y: 10,
         textAlign: 'left',
         verticalAlign: 'top',
         fontSize: 2,

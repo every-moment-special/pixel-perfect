@@ -1,9 +1,22 @@
 'use strict';
 
-const GLYPH_WIDTH = 3;
-const GLYPH_HEIGHT = 5;
+const fs = require('fs');
+const path = require('path');
+
+// Base bitmap glyph dimensions (existing 3x5 bitmap definitions)
+const BASE_GLYPH_WIDTH = 3;
+const BASE_GLYPH_HEIGHT = 5;
+
+// Target render glyph size to approximate Press Start 2P proportions.
+// We render on an 8x8 pixel grid and then encode via half-blocks, which
+// produces 8x4 terminal cells per glyph at scale 1.
+const RENDER_GLYPH_WIDTH = 8;
+const RENDER_GLYPH_HEIGHT = 8;
+
 const SPACING = 1; // pixel columns between glyphs (in pixel units)
 
+// Existing compact source glyphs (3x5). We will upscale these at render time
+// to the 8x8 target grid to approximate Press Start 2P.
 const PIXEL_FONT = {
   'a': ['010','101','111','101','101'],
   'b': ['110','101','110','101','110'],
@@ -51,32 +64,54 @@ const PIXEL_FONT = {
   '?': ['111','001','011','000','010']
 };
 
-const QUAD = [
-  ' ',  // 0
-  '▘',  // 1 UL
-  '▝',  // 2 UR
-  '▀',  // 3 UL+UR
-  '▖',  // 4 LL
-  '▌',  // 5 UL+LL
-  '▞',  // 6 UR+LL
-  '▛',  // 7 UL+UR+LL
-  '▗',  // 8 LR
-  '▚',  // 9 UL+LR
-  '▐',  // 10 UR+LR
-  '▜',  // 11 UL+UR+LR
-  '▄',  // 12 LL+LR
-  '▙',  // 13 UL+LL+LR
-  '▟',  // 14 UR+LL+LR
-  '█'   // 15 all
-];
+// Half-block character map (two vertical halves per cell)
+// 0: empty, 1: upper half, 2: lower half, 3: full block
+const HALFBLOCK = [' ', '▀', '▄', '█'];
+
+// Persistent glyph bitmap cache (char -> 8x8 boolean rows), saved to JSON
+const CACHE_FILE = path.join(__dirname, 'assets', 'PS2P.bitmap.json');
+/** @type {Map<string, boolean[][]>} */
+const glyphBitmapCache = new Map();
+
+function decodeRowBitsToBool(str) {
+  const out = new Array(RENDER_GLYPH_WIDTH);
+  for (let i = 0; i < RENDER_GLYPH_WIDTH; i++) out[i] = str[i] === '1';
+  return out;
+}
+
+function loadGlyphCacheFromDisk() {
+  try {
+    if (!fs.existsSync(CACHE_FILE)) return;
+    const raw = fs.readFileSync(CACHE_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    // Validate cache (no TTF dependency). Allow any meta or none.
+    const ok = !!data && typeof data === 'object';
+    if (!ok) return;
+    const glyphs = data.glyphs || {};
+    for (const ch of Object.keys(glyphs)) {
+      const rows = glyphs[ch];
+      if (Array.isArray(rows) && rows.length === RENDER_GLYPH_HEIGHT) {
+        const bmp = new Array(RENDER_GLYPH_HEIGHT);
+        for (let y = 0; y < RENDER_GLYPH_HEIGHT; y++) bmp[y] = decodeRowBitsToBool(rows[y]);
+        glyphBitmapCache.set(ch, bmp);
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+
+loadGlyphCacheFromDisk();
 
 function measurePixelFont(text, scale) {
   const totalGlyphs = text.length;
   const pixelWidth = totalGlyphs > 0
-    ? (GLYPH_WIDTH * scale) * totalGlyphs + SPACING * (totalGlyphs - 1)
+    ? (RENDER_GLYPH_WIDTH * scale) * totalGlyphs + SPACING * (totalGlyphs - 1)
     : 0;
-  const pixelHeight = GLYPH_HEIGHT * scale;
-  const cellCols = Math.ceil(pixelWidth / 2);
+  const pixelHeight = RENDER_GLYPH_HEIGHT * scale;
+  // Half-blocks: one pixel per column; two vertical pixels per cell row
+  const cellCols = pixelWidth;
   const cellRows = Math.ceil(pixelHeight / 2);
   return { cellCols, cellRows };
 }
@@ -90,30 +125,45 @@ function rasterizePixelFont(text, scale) {
   for (let index = 0; index < text.length; index++) {
     const ch = text[index];
     const key = ch.toLowerCase();
-    const glyph = PIXEL_FONT[key] || PIXEL_FONT['?'];
+    let bmp = glyphBitmapCache.get(ch) || null;
+    if (!bmp) {
+      // Fallback to upscaled 3x5 source glyphs
+      const baseGlyph = PIXEL_FONT[key] || PIXEL_FONT['?'];
+      bmp = new Array(RENDER_GLYPH_HEIGHT);
+      for (let ty = 0; ty < RENDER_GLYPH_HEIGHT; ty++) {
+        const srcY = Math.floor((ty / RENDER_GLYPH_HEIGHT) * BASE_GLYPH_HEIGHT);
+        const rowBits = baseGlyph[srcY];
+        const row = new Array(RENDER_GLYPH_WIDTH).fill(false);
+        for (let tx = 0; tx < RENDER_GLYPH_WIDTH; tx++) {
+          const srcX = Math.floor((tx / RENDER_GLYPH_WIDTH) * BASE_GLYPH_WIDTH);
+          row[tx] = rowBits[srcX] === '1';
+        }
+        bmp[ty] = row;
+      }
+      glyphBitmapCache.set(ch, bmp);
+      // No need to persist fallback-only glyphs
+    }
 
-    for (let gy = 0; gy < GLYPH_HEIGHT; gy++) {
-      const rowBits = glyph[gy];
-      for (let gx = 0; gx < GLYPH_WIDTH; gx++) {
-        if (rowBits[gx] !== '1') continue;
+    // Emit into half-block grid with scaling
+    for (let ty = 0; ty < RENDER_GLYPH_HEIGHT; ty++) {
+      for (let tx = 0; tx < RENDER_GLYPH_WIDTH; tx++) {
+        if (!bmp[ty][tx]) continue;
         for (let sy = 0; sy < scale; sy++) {
-          const py = gy * scale + sy;
+          const py = ty * scale + sy;
           const cellY = Math.floor(py / 2);
           if (cellY < 0 || cellY >= cellRows) continue;
-          const quarterY = (py % 2 === 0) ? 0 : 1; // 0=top,1=bottom
+          const isTop = (py % 2 === 0);
           for (let sx = 0; sx < scale; sx++) {
-            const px = penPxX + gx * scale + sx;
-            const cellX = Math.floor(px / 2);
+            const px = penPxX + tx * scale + sx;
+            const cellX = px;
             if (cellX < 0 || cellX >= cellCols) continue;
-            const quarterX = (px % 2 === 0) ? 0 : 1; // 0=left,1=right
-            const bit = (quarterY === 0 ? (quarterX === 0 ? 1 : 2) : (quarterX === 0 ? 4 : 8));
-            grid[cellY][cellX] |= bit;
+            grid[cellY][cellX] |= isTop ? 1 : 2;
           }
         }
       }
     }
 
-    penPxX += GLYPH_WIDTH * scale;
+    penPxX += RENDER_GLYPH_WIDTH * scale;
     if (index !== text.length - 1) penPxX += SPACING;
   }
 
@@ -139,13 +189,12 @@ function rasterizePixelFontCached(text, scale) {
 }
 
 module.exports = {
-  GLYPH_WIDTH,
-  GLYPH_HEIGHT,
+  // Expose render-time glyph dimensions
+  GLYPH_WIDTH: RENDER_GLYPH_WIDTH,
+  GLYPH_HEIGHT: RENDER_GLYPH_HEIGHT,
   SPACING,
   measurePixelFont,
   rasterizePixelFont,
   rasterizePixelFontCached,
-  QUAD,
+  HALFBLOCK,
 };
-
-

@@ -2,7 +2,7 @@ const { terminal, colors, generate } = require('./helper.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
 const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox } = require('./borders.js');
-const { rasterizePixelFontCached, measurePixelFont, QUAD } = require('./pixelFont.js');
+const { rasterizePixelFontCached, measurePixelFont, HALFBLOCK } = require('./pixelFont.js');
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
 
@@ -357,7 +357,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
           }
           if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
-          buffer[cy][cx].char = QUAD[mask];
+          // mask is 1 (upper), 2 (lower), or 3 (both)
+          buffer[cy][cx].char = HALFBLOCK[mask];
           buffer[cy][cx].fgColor = fgColor;
           buffer[cy][cx].bgColor = bgColor;
           buffer[cy][cx].raw = null;
