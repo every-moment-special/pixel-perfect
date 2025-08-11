@@ -222,6 +222,8 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
 
     // Position rows according to justifyContent per row
     let cursorY = frame.y;
+    const rowTopsRelative = [];
+    const rowHeights = [];
     const placed = [];
     for (const row of rows) {
       const count = row.items.length;
@@ -249,6 +251,8 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
       }
 
       let cursorX = startX;
+      rowTopsRelative.push(cursorY - frame.y);
+      rowHeights.push(row.rowHeight);
       for (const ch of row.items) {
         const chWidth = (ch && ch.frame && ch.frame.width) || 0;
         const dx = cursorX - ch.frame.x;
@@ -262,6 +266,12 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     }
 
     laidOutChildren = placed;
+
+    // Attach grid row metadata on node for smarter scrolling
+    node = {
+      ...node,
+      gridMeta: { rowTops: rowTopsRelative, rowHeights },
+    };
   }
 
   // Compute content bounds before applying scroll translation
@@ -311,6 +321,9 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
       contentHeight,
       effectiveScrollX,
       effectiveScrollY,
+      // Include grid row info if available
+      rowTops: node.gridMeta?.rowTops || null,
+      rowHeights: node.gridMeta?.rowHeights || null,
     },
   };
 }

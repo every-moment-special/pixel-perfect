@@ -46,11 +46,50 @@ async function main() {
       return maxScrollY;
     };
 
+    const getScrollStep = (direction) => {
+      // If we have grid row metadata, jump to next/prev row boundary
+      const containers = Array.isArray(laidOut) ? laidOut : [laidOut];
+      let best = null;
+      const current = state.scrollY || 0;
+      const scan = (node) => {
+        if (!node || typeof node !== 'object') return;
+        const s = node.computedStyle || {};
+        if (s.overflow === 'auto' && node.scrollMeta) {
+          const { rowTops, rowHeights } = node.scrollMeta;
+          if (Array.isArray(rowTops) && Array.isArray(rowHeights) && rowTops.length === rowHeights.length && rowTops.length > 0) {
+            if (direction < 0) {
+              // find the largest rowTop strictly less than current
+              const candidates = rowTops.filter((t) => t < current);
+              if (candidates.length > 0) {
+                const nextTop = candidates[candidates.length - 1];
+                best = (best == null) ? nextTop : Math.max(best, nextTop);
+              } else {
+                best = 0;
+              }
+            } else {
+              // find the smallest rowTop strictly greater than current
+              const candidates = rowTops.filter((t) => t > current);
+              if (candidates.length > 0) {
+                const nextTop = candidates[0];
+                best = (best == null) ? nextTop : Math.min(best, nextTop);
+              }
+            }
+          }
+        }
+        const children = Array.isArray(node.content) ? node.content : (node.content ? [node.content] : []);
+        for (const c of children) scan(c);
+      };
+      for (const n of containers) scan(n);
+      if (best == null) return direction < 0 ? current - 1 : current + 1; // fallback
+      return best;
+    };
+
     event.on('key:up', async () => {
       const prev = state.scrollY || 0;
       const max = getMaxScrollY();
-      const next = Math.max(0, Math.min(prev - 1, max));
-      if (next === prev) return; // no change, skip rerender
+      const target = getScrollStep(-1);
+      const next = Math.max(0, Math.min(target, max));
+      if (next === prev) return;
       state.scrollY = next;
       tree = Interface();
       laidOut = await render(tree);
@@ -58,8 +97,9 @@ async function main() {
     event.on('key:down', async () => {
       const prev = state.scrollY || 0;
       const max = getMaxScrollY();
-      const next = Math.max(0, Math.min(prev + 1, max));
-      if (next === prev) return; // no change, skip rerender
+      const target = getScrollStep(1);
+      const next = Math.max(0, Math.min(target, max));
+      if (next === prev) return;
       state.scrollY = next;
       tree = Interface();
       laidOut = await render(tree);

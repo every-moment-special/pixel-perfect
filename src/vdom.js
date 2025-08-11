@@ -82,7 +82,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
   if (!node) return;
 
   if (Array.isArray(node)) {
-    for (const c of node) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1, clipRect);
+    const toPaint = [...node]
+      .map((n, i) => ({ n, i, z: (n && n.computedStyle && Number.isFinite(n.computedStyle.zIndex) ? n.computedStyle.zIndex : 0) }))
+      .sort((a, b) => a.z !== b.z ? a.z - b.z : a.i - b.i) // low zIndex first; stable for ties
+      .map(({ n }) => n);
+    for (const c of toPaint) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1, clipRect);
     return;
   }
 
@@ -271,7 +275,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
-    for (const c of content) {
+    // Paint children sorted by zIndex so higher zIndex paint later (on top)
+    const childrenForPaint = Array.isArray(content)
+      ? [...content].sort((a, b) => ((a?.computedStyle?.zIndex) ?? 0) - ((b?.computedStyle?.zIndex) ?? 0))
+      : [];
+    for (const c of childrenForPaint) {
       await renderToBuffer(c, buffer, 0, 0, depth + 1, clipRect);
     }
 
@@ -304,7 +312,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
-    for (const c of content) {
+    // Paint children sorted by zIndex so higher zIndex paint later (on top)
+    const childrenForPaint = Array.isArray(content)
+      ? [...content].sort((a, b) => ((a?.computedStyle?.zIndex) ?? 0) - ((b?.computedStyle?.zIndex) ?? 0))
+      : [];
+    for (const c of childrenForPaint) {
       await renderToBuffer(c, buffer, 0, 0, depth + 1, childClip);
     }
 
