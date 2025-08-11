@@ -85,7 +85,80 @@ async function main() {
       return best;
     };
 
+    // Selection-aware grid helpers
+    const findGridContainer = (node) => {
+      if (!node || typeof node !== 'object') return null;
+      const style = node.computedStyle || {};
+      if (style.display === 'grid') return node;
+      const children = Array.isArray(node.content) ? node.content : (node.content ? [node.content] : []);
+      for (const c of children) {
+        const found = findGridContainer(c);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const getGridContext = () => {
+      const rootNodes = Array.isArray(laidOut) ? laidOut : [laidOut];
+      let grid = null;
+      for (const n of rootNodes) {
+        grid = findGridContainer(n);
+        if (grid) break;
+      }
+      if (!grid) return null;
+      const container = grid;
+      const rowTops = container.scrollMeta?.rowTops || [];
+      const rowHeights = container.scrollMeta?.rowHeights || [];
+      const content = Array.isArray(container.content) ? container.content : [];
+      // Estimate columns using first row band
+      let columns = 0;
+      if (rowTops.length > 0 && rowHeights.length > 0) {
+        const top0 = rowTops[0];
+        const h0 = rowHeights[0];
+        const y0Min = container.frame.y + top0;
+        const y0Max = y0Min + h0 - 1;
+        for (const ch of content) {
+          if (!ch || !ch.frame) continue;
+          const cy = ch.frame.y;
+          if (cy >= y0Min && cy <= y0Max) columns++;
+        }
+      }
+      if (columns <= 0) columns = content.length > 0 ? content.length : 1;
+      const viewportHeight = container.frame?.height || 0;
+      const contentHeight = container.scrollMeta?.contentHeight || 0;
+      const itemCount = content.length;
+      return { container, columns, rowTops, rowHeights, viewportHeight, contentHeight, itemCount };
+    };
+
+    const ensureRowVisible = (ctx, rowIndex) => {
+      if (!ctx) return;
+      const { rowTops, rowHeights, viewportHeight, contentHeight } = ctx;
+      if (!rowTops || !rowHeights || rowIndex < 0 || rowIndex >= rowTops.length) return;
+      const rowTop = rowTops[rowIndex];
+      const rowBottom = rowTop + Math.max(1, rowHeights[rowIndex]) - 1;
+      const current = state.scrollY || 0;
+      let next = current;
+      if (rowTop < current) next = rowTop;
+      else if (rowBottom >= current + viewportHeight) next = Math.max(0, rowBottom - viewportHeight + 1);
+      next = Math.max(0, Math.min(next, Math.max(0, contentHeight - viewportHeight)));
+      if (next !== current) state.scrollY = next;
+    };
+
     event.on('key:up', async () => {
+      const ctx = getGridContext();
+      if (ctx) {
+        const prevIndex = state.selectedIndex || 0;
+        const newIndex = Math.max(0, prevIndex - ctx.columns);
+        if (newIndex !== prevIndex) {
+          state.selectedIndex = newIndex;
+          const rowIndex = Math.floor(newIndex / Math.max(1, ctx.columns));
+          ensureRowVisible(ctx, rowIndex);
+          tree = Interface();
+          laidOut = await render(tree);
+          return;
+        }
+      }
+      // Fallback to scroll behavior
       const prev = state.scrollY || 0;
       const max = getMaxScrollY();
       const target = getScrollStep(-1);
@@ -96,6 +169,20 @@ async function main() {
       laidOut = await render(tree);
     });
     event.on('key:down', async () => {
+      const ctx = getGridContext();
+      if (ctx) {
+        const prevIndex = state.selectedIndex || 0;
+        const newIndex = Math.min(ctx.itemCount - 1, prevIndex + ctx.columns);
+        if (newIndex !== prevIndex) {
+          state.selectedIndex = newIndex;
+          const rowIndex = Math.floor(newIndex / Math.max(1, ctx.columns));
+          ensureRowVisible(ctx, rowIndex);
+          tree = Interface();
+          laidOut = await render(tree);
+          return;
+        }
+      }
+      // Fallback to scroll behavior
       const prev = state.scrollY || 0;
       const max = getMaxScrollY();
       const target = getScrollStep(1);
@@ -117,6 +204,14 @@ async function main() {
       if (next < 0) return;
       if (next === prev) return;
       state.selectedIndex = next;
+
+      // Ensure visibility (handle wrap-around first->last)
+      const ctx = getGridContext();
+      if (ctx) {
+        const rowIndex = Math.floor(next / Math.max(1, ctx.columns));
+        ensureRowVisible(ctx, rowIndex);
+      }
+
       tree = Interface();
       laidOut = await render(tree);
     });
@@ -131,6 +226,14 @@ async function main() {
       if (next > count) return;
       if (next === prev) return;
       state.selectedIndex = next;
+
+      // Ensure visibility (handle wrap-around last->first)
+      const ctx = getGridContext();
+      if (ctx) {
+        const rowIndex = Math.floor(next / Math.max(1, ctx.columns));
+        ensureRowVisible(ctx, rowIndex);
+      }
+
       tree = Interface();
       laidOut = await render(tree);
     });

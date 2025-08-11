@@ -40,7 +40,7 @@ const Panel = (style = {}, content = []) => {
     ]),
     element('div', {
         width: terminal.width,
-        height: terminal.height - 5,
+        height: terminal.height - 7,
         y: 7,
         textAlign: 'left',
         verticalAlign: 'top',
@@ -58,7 +58,7 @@ const Panel = (style = {}, content = []) => {
         mediaItems.map((item, index) => {
           const isSelected = selected === index;
           if (item.type === 'media') {
-            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'black', overflow: 'hidden', zIndex: 0 }, [
+            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
               element(
                 'img',
                 { 
@@ -70,7 +70,7 @@ const Panel = (style = {}, content = []) => {
                   verticalAlign: 'top',
                   fontSize: 2,
                   pixelFont: true,
-                  backgroundColor: 'black',
+                  backgroundColor: 'transparent',
                   overflow: 'hidden',
                   zIndex: 0,
                 },
@@ -87,7 +87,7 @@ const Panel = (style = {}, content = []) => {
                   verticalAlign: 'bottom',
                   fontSize: 1,
                   pixelFont: true,
-                  backgroundColor: 'black',
+                  backgroundColor: 'transparent',
                   zIndex: 0,
                   color: isSelected ? 'cyan' : 'gray',
                 },
