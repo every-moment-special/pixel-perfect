@@ -601,17 +601,48 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
   for (const c of content) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1, clipRect);
 }
 
+let renderInProgress = false;
+let queuedRoot = null;
+let queuedResolvers = [];
+
+async function processRenderQueue() {
+  if (renderInProgress) return;
+  renderInProgress = true;
+  try {
+    while (queuedRoot != null) {
+      const root = queuedRoot;
+      queuedRoot = null; // collapse to latest
+
+      const width = Math.max(1, terminal.width || 80);
+      const height = Math.max(1, terminal.height || 24);
+
+      const buffer = createBuffer(width, height);
+      const styledRoot = resolveStylesTree(root);
+      const laidOutRoot = computeLayoutTree(styledRoot, { width, height });
+      await renderToBuffer(laidOutRoot, buffer, 0, 0);
+
+      writeDiffFrame(buffer);
+
+      // resolve all waiting promises with the laid out tree
+      const resolvers = queuedResolvers;
+      queuedResolvers = [];
+      for (const resolve of resolvers) resolve(laidOutRoot);
+    }
+  } finally {
+    renderInProgress = false;
+  }
+}
+
 const render = async (root) => {
-  const width = Math.max(1, terminal.width || 80);
-  const height = Math.max(1, terminal.height || 24);
-
-  const buffer = createBuffer(width, height);
-  const styledRoot = resolveStylesTree(root);
-  const laidOutRoot = computeLayoutTree(styledRoot, { width, height });
-  await renderToBuffer(laidOutRoot, buffer, 0, 0);
-
-  writeDiffFrame(buffer);
-  return laidOutRoot;
+  // Coalesce rapid calls; only latest state is rendered
+  queuedRoot = root;
+  const resultPromise = new Promise((resolve) => queuedResolvers.push(resolve));
+  // Kick the processor (next tick) if idle
+  if (!renderInProgress) {
+    // Use setImmediate when available to batch microtasks, else setTimeout 0
+    (typeof setImmediate === 'function' ? setImmediate : setTimeout)(processRenderQueue, 0);
+  }
+  return resultPromise;
 }
 
 module.exports = { element, render };
