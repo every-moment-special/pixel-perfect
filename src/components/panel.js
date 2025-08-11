@@ -14,7 +14,7 @@ const Panel = (style = {}, content = []) => {
 
   style = {
     x: 0,
-    y: 1,
+    y: 0,
     width: terminal.width,
     height: 5,
     backgroundColor: 'transparent',
@@ -34,7 +34,7 @@ const Panel = (style = {}, content = []) => {
           color: 'white',
           zIndex: 1,
         },
-        `size: ${terminal.width}x${terminal.height * 2 - 1}`
+        `size: ${terminal.width}x${terminal.height * 2}`
       )
     ]),
     element('div', {

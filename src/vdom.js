@@ -75,6 +75,208 @@ const createBuffer = (width, height) => {
   return rows;
 }
 
+// Previous frame buffer for damage-based rendering
+let previousBuffer = null;
+let previousWidth = 0;
+let previousHeight = 0;
+
+const cellsEqual = (a, b) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.char === b.char && a.fgColor === b.fgColor && a.bgColor === b.bgColor && a.raw === b.raw;
+};
+
+const moveCursorTo = (x, y) => `\x1b[${y};${x}H`; // 1-based
+
+const sgrReset = '\x1b[0m';
+
+function rowsEqual(rowA, rowB) {
+  if (!rowA || !rowB) return false;
+  if (rowA.length !== rowB.length) return false;
+  for (let i = 0; i < rowA.length; i++) {
+    if (!cellsEqual(rowA[i], rowB[i])) return false;
+  }
+  return true;
+}
+
+function detectVerticalScroll(prev, next) {
+  if (!prev || !next) return 0;
+  const height = Math.min(prev.length, next.length);
+  if (height === 0) return 0;
+  const width = Math.min(prev[0].length, next[0].length);
+  if (width === 0) return 0;
+  const maxShift = Math.min(10, Math.floor(height / 4));
+  const minMatchingRows = Math.max(1, Math.floor(height * 0.8));
+
+  let bestDelta = 0;
+  let bestMatch = 0;
+
+  // Try scroll up by s (content moved up)
+  for (let s = 1; s <= maxShift; s++) {
+    let matches = 0;
+    for (let y = 0; y < height - s; y++) {
+      if (rowsEqual(prev[y + s], next[y])) matches++;
+    }
+    if (matches > bestMatch && matches >= minMatchingRows) {
+      bestMatch = matches;
+      bestDelta = s; // positive => scroll up
+    }
+  }
+
+  // Try scroll down by s (content moved down)
+  for (let s = 1; s <= maxShift; s++) {
+    let matches = 0;
+    for (let y = s; y < height; y++) {
+      if (rowsEqual(prev[y - s], next[y])) matches++;
+    }
+    if (matches > bestMatch && matches >= minMatchingRows) {
+      bestMatch = matches;
+      bestDelta = -s; // negative => scroll down
+    }
+  }
+
+  return bestDelta;
+}
+
+function applyScrollBuffer(buffer, delta) {
+  if (!buffer) return buffer;
+  const height = buffer.length;
+  if (height === 0) return buffer;
+  const width = buffer[0].length;
+  const blankRow = () => new Array(width).fill(null).map(() => ({ char: ' ', fgColor: 'transparent', bgColor: 'transparent', raw: null }));
+  const out = new Array(height);
+  if (delta > 0) {
+    // scrolled up by delta: rows move up, new blank rows at bottom
+    for (let y = 0; y < height - delta; y++) out[y] = buffer[y + delta].map((c) => ({ ...c }));
+    for (let y = Math.max(0, height - delta); y < height; y++) out[y] = blankRow();
+  } else if (delta < 0) {
+    const s = -delta;
+    // scrolled down by s: rows move down, new blank rows at top
+    for (let y = height - 1; y >= s; y--) out[y] = buffer[y - s].map((c) => ({ ...c }));
+    for (let y = 0; y < Math.min(height, s); y++) out[y] = blankRow();
+  } else {
+    return buffer.map((row) => row.map((c) => ({ ...c })));
+  }
+  return out;
+}
+
+function writeDiffFrame(nextBuffer) {
+  const height = nextBuffer.length;
+  const width = height > 0 ? nextBuffer[0].length : 0;
+
+  // If no previousBuffer or size changed, do a full redraw baseline
+  const fullRedraw = !previousBuffer || previousWidth !== width || previousHeight !== height;
+
+  let currentFg = null;
+  let currentBg = null;
+
+  if (fullRedraw) {
+    process.stdout.write('\x1b[2J');
+  }
+
+  // Attempt scroll detection to reduce redraw for large vertical shifts
+  let prevForDiff = previousBuffer;
+  if (!fullRedraw) {
+    const delta = detectVerticalScroll(previousBuffer, nextBuffer);
+    if (delta !== 0) {
+      if (delta > 0) {
+        process.stdout.write(`\x1b[${delta}S`); // Scroll Up
+      } else {
+        process.stdout.write(`\x1b[${-delta}T`); // Scroll Down
+      }
+      prevForDiff = applyScrollBuffer(previousBuffer, delta);
+      // After scroll, styles are unknown
+      currentFg = null;
+      currentBg = null;
+    }
+  }
+
+  for (let y = 0; y < height; y++) {
+    const prevRow = fullRedraw ? null : prevForDiff[y];
+    const nextRow = nextBuffer[y];
+
+    let x = 0;
+    while (x < width) {
+      const nextCell = nextRow[x];
+      const prevCell = prevRow ? prevRow[x] : null;
+
+      const different = fullRedraw || !cellsEqual(prevCell, nextCell);
+      if (!different) {
+        x++;
+        continue;
+      }
+
+      // If nextCell is raw, write it directly and continue
+      if (nextCell.raw != null) {
+        process.stdout.write(moveCursorTo(x + 1, y + 1));
+        process.stdout.write(nextCell.raw);
+        // Raw likely contains its own SGR; invalidate cached styles
+        currentFg = null;
+        currentBg = null;
+        x++;
+        continue;
+      }
+
+      // Start a styled run where cells differ and share same fg/bg and are not raw
+      const runFg = nextCell.fgColor;
+      const runBg = nextCell.bgColor;
+      let runStart = x;
+      let runEnd = x;
+      while (runEnd < width) {
+        const n = nextRow[runEnd];
+        const p = prevRow ? prevRow[runEnd] : null;
+        if (!(fullRedraw || !cellsEqual(p, n))) break; // stop when same
+        if (n.raw != null) break; // don't include raw in styled run
+        if (n.fgColor !== runFg || n.bgColor !== runBg) break; // keep uniform attrs
+        runEnd++;
+      }
+
+      // Check if the run is all spaces to end-of-line with uniform bg => BCE erase
+      let allSpaces = true;
+      for (let i = runStart; i < runEnd; i++) {
+        if (nextRow[i].char !== ' ') { allSpaces = false; break; }
+      }
+      const canUseBce = allSpaces && runEnd === width;
+
+      // Emit cursor move
+      process.stdout.write(moveCursorTo(runStart + 1, y + 1));
+
+      // Emit minimal SGR changes
+      if (currentFg !== runFg) {
+        process.stdout.write(colors[runFg] || '');
+        currentFg = runFg;
+      }
+      if (currentBg !== runBg) {
+        process.stdout.write(getBgAnsi(runBg));
+        currentBg = runBg;
+      }
+
+      if (canUseBce) {
+        // Erase to end of line honoring current background color
+        process.stdout.write('\x1b[K');
+      } else {
+        // Write characters for the run
+        let out = '';
+        for (let i = runStart; i < runEnd; i++) {
+          out += nextRow[i].char;
+        }
+        process.stdout.write(out);
+      }
+
+      x = runEnd;
+    }
+  }
+
+  // Reset attributes and park cursor bottom-left like before
+  process.stdout.write(sgrReset);
+  process.stdout.write(`\x1b[${height};1H`);
+
+  // Update previousBuffer
+  previousBuffer = nextBuffer.map((row) => row.map((c) => ({ ...c })));
+  previousWidth = width;
+  previousHeight = height;
+}
+
 
 // removed local border helpers; now imported from borders.js
 
@@ -340,7 +542,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
 
         const barLeft = x + width - sbWidth;
         const barRight = x + width - 1;
-        const trackTop = y + 1; // 1-cell top margin
+        const trackTop = y; // 1-cell top margin
         const trackHeight = height;
         const minThumbSize = Math.max(1, Math.floor(trackHeight * 0.1));
         const visibleRatio = Math.min(1, height / contentHeight);
@@ -353,7 +555,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         const thumbBottom = thumbTop + thumbSize - 1;
 
         // Draw track
-        for (let row = trackTop; row < trackTop + trackHeight - 1; row++) { // leave 1-cell bottom margin
+        for (let row = trackTop; row < trackTop + trackHeight; row++) { // leave 1-cell bottom margin
           if (row < 0 || row >= buffer.length) continue;
           for (let col = barLeft; col <= barRight; col++) {
             if (col < 0 || col >= buffer[0].length) continue;
@@ -408,38 +610,7 @@ const render = async (root) => {
   const laidOutRoot = computeLayoutTree(styledRoot, { width, height });
   await renderToBuffer(laidOutRoot, buffer, 0, 0);
 
-  process.stdout.write('\x1b[2J\x1b[H');
-
-  let prevFg = null;
-  let prevBg = null;
-
-  for (let y = 0; y < height; y++) {
-    prevFg = null;
-    prevBg = null;
-    for (let x = 0; x < width; x++) {
-      const cell = buffer[y][x];
-
-      if (cell.raw != null) {
-        process.stdout.write(cell.raw);
-        prevFg = null;
-        prevBg = null;
-        continue;
-      }
-
-      if (cell.fgColor !== prevFg) {
-        process.stdout.write(colors[cell.fgColor] || '');
-        prevFg = cell.fgColor;
-      }
-      if (cell.bgColor !== prevBg) {
-        process.stdout.write(getBgAnsi(cell.bgColor));
-        prevBg = cell.bgColor;
-      }
-
-      process.stdout.write(cell.char);
-    }
-    process.stdout.write('\x1b[0m\n');
-  }
-  process.stdout.write(`\x1b[${height};1H`);
+  writeDiffFrame(buffer);
   return laidOutRoot;
 }
 
