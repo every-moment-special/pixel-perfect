@@ -303,6 +303,49 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     for (const c of content) {
       await renderToBuffer(c, buffer, 0, 0, depth + 1, childClip);
     }
+
+    // Draw vertical scrollbar when overflowing and overflow is auto
+    if (style.overflow === 'auto' && node.scrollMeta) {
+      const { contentHeight, effectiveScrollY } = node.scrollMeta;
+      const scrollable = contentHeight > height;
+      if (scrollable && width >= 1 && height >= 3) {
+        const sbWidth = Math.max(1, Number(style.scrollbarWidth) || 1);
+        const barLeft = x + width - sbWidth;
+        const barRight = x + width - 1;
+        const trackTop = y + 0;
+        const trackHeight = height;
+        const minThumbSize = Math.max(1, Math.floor(trackHeight * 0.1));
+        const visibleRatio = Math.min(1, height / contentHeight);
+        const thumbSize = Math.max(minThumbSize, Math.floor(trackHeight * visibleRatio));
+        const maxScroll = Math.max(1, contentHeight - height);
+        const scrollRatio = Math.min(1, Math.max(0, effectiveScrollY / maxScroll));
+        const maxThumbTop = trackHeight - thumbSize;
+        const thumbOffset = Math.floor(scrollRatio * maxThumbTop);
+        const thumbTop = trackTop + thumbOffset;
+        const thumbBottom = thumbTop + thumbSize - 1;
+
+        // Draw track
+        for (let row = trackTop; row < trackTop + trackHeight; row++) {
+          if (row < 0 || row >= buffer.length) continue;
+          for (let col = barLeft; col <= barRight; col++) {
+            if (col < 0 || col >= buffer[0].length) continue;
+            buffer[row][col].char = '░';
+            buffer[row][col].fgColor = style.color || 'white';
+            buffer[row][col].bgColor = buffer[row][col].bgColor || 'transparent';
+          }
+        }
+        // Draw thumb
+        for (let row = thumbTop; row <= thumbBottom; row++) {
+          if (row < 0 || row >= buffer.length) continue;
+          for (let col = barLeft; col <= barRight; col++) {
+            if (col < 0 || col >= buffer[0].length) continue;
+            buffer[row][col].char = '█';
+            buffer[row][col].fgColor = style.color || 'white';
+            buffer[row][col].bgColor = buffer[row][col].bgColor || 'transparent';
+          }
+        }
+      }
+    }
     // Draw border for div if requested
     const border = style.border;
     if (border.width > 0) {

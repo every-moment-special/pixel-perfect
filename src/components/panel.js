@@ -39,6 +39,7 @@ const Panel = (style = {}, content = []) => {
         gap: 10,
         backgroundColor: 'transparent', 
         overflow: 'auto',
+        scrollbarWidth: 10,
         scrollY: state.scrollY || 0,
         justifyContent: 'center',
       }, [

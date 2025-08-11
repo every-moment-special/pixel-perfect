@@ -12,8 +12,19 @@ async function main() {
 
 
     try {
+    // Enter alternate screen buffer and hide cursor for a clean TUI area
+    process.stdout.write('\x1b[?1049h');
+    process.stdout.write('\x1b[?25l');
+    // Disable terminal local echo as an extra safeguard (if supported)
+    process.stdout.write('\x1b[?12l');
+
     let tree = Interface();
     render(tree);
+    // Extra paint shortly after start to wipe any startup logs (e.g., inspector message)
+    setTimeout(() => {
+      tree = Interface();
+      render(tree);
+    }, 200);
     // await gui.start();
     
     // Scroll with arrow keys when overflow is auto
@@ -54,6 +65,10 @@ async function shutdown() {
   } catch (err) {
     console.error("Error restoring font size:", err.message);
   } finally {
+    // Restore cursor and leave alternate screen buffer
+    try { process.stdout.write('\x1b[?25h'); } catch (_) {}
+    try { process.stdout.write('\x1b[?12h'); } catch (_) {}
+    try { process.stdout.write('\x1b[?1049l'); } catch (_) {}
     process.exit();
   }
 }

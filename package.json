@@ -10,7 +10,7 @@
         "play": "node --max-old-space-size=8192 src/play.js",
         "run": "node --max-old-space-size=2048 src/run.js",
         "start": "node --max-old-space-size=2048 src/start.js",
-        "dev": "nodemon --quiet --inspect --trace-warnings --max-old-space-size=2048 src/start.js"
+        "dev": "nodemon --quiet --inspect --trace-warnings --max-old-space-size=2048 --no-stdin src/start.js"
     },
     "dependencies": {
         "nodemon": "^3.1.10",

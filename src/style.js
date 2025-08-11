@@ -41,6 +41,7 @@
  * @property {'visible'|'hidden'|'auto'} overflow
  * @property {number} scrollX // integer >= 0; used when overflow is 'auto'
  * @property {number} scrollY // integer >= 0; used when overflow is 'auto'
+ * @property {number} scrollbarWidth // integer >= 1; width in cells of vertical scrollbar when shown
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -88,6 +89,7 @@ const baseDefaults = Object.freeze({
   overflow: 'visible',
   scrollX: 0,
   scrollY: 0,
+  scrollbarWidth: 1,
 });
 
 const defaultsByType = Object.freeze({
@@ -185,6 +187,7 @@ function normalizeStyle(type, rawStyle) {
   const overflow = oneOf(s.overflow, ['visible', 'hidden', 'auto'], d.overflow || 'visible');
   const scrollX = Math.max(0, coerceInteger(s.scrollX, d.scrollX || 0));
   const scrollY = Math.max(0, coerceInteger(s.scrollY, d.scrollY || 0));
+  const scrollbarWidth = Math.max(1, coerceInteger(s.scrollbarWidth, d.scrollbarWidth || 1));
 
   return {
     x,
@@ -205,6 +208,7 @@ function normalizeStyle(type, rawStyle) {
     overflow,
     scrollX,
     scrollY,
+    scrollbarWidth,
   };
 }
 

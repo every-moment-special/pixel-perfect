@@ -261,12 +261,36 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     laidOutChildren = placed;
   }
 
-  // Apply scroll offsets for overflow:auto by translating children negatively
+  // Compute content bounds before applying scroll translation
+  let contentRightMost = frame.x;
+  let contentBottomMost = frame.y;
+  let contentLeftMost = frame.x;
+  let contentTopMost = frame.y;
+  for (const ch of laidOutChildren) {
+    if (ch && ch.frame) {
+      const r = ch.frame.x + ch.frame.width;
+      const b = ch.frame.y + ch.frame.height;
+      if (r > contentRightMost) contentRightMost = r;
+      if (b > contentBottomMost) contentBottomMost = b;
+      if (ch.frame.x < contentLeftMost) contentLeftMost = ch.frame.x;
+      if (ch.frame.y < contentTopMost) contentTopMost = ch.frame.y;
+    }
+  }
+  const contentWidth = Math.max(0, contentRightMost - frame.x);
+  const contentHeight = Math.max(0, contentBottomMost - frame.y);
+
+  // Apply scroll offsets for overflow:auto by translating children negatively, clamped to content size
+  let effectiveScrollX = 0;
+  let effectiveScrollY = 0;
   if (style.overflow === 'auto') {
-    const scrollX = Math.max(0, Number(style.scrollX) || 0);
-    const scrollY = Math.max(0, Number(style.scrollY) || 0);
-    if (scrollX !== 0 || scrollY !== 0) {
-      laidOutChildren = laidOutChildren.map((ch) => translateFrames(ch, -scrollX, -scrollY));
+    const desiredScrollX = Math.max(0, Number(style.scrollX) || 0);
+    const desiredScrollY = Math.max(0, Number(style.scrollY) || 0);
+    const maxScrollX = Math.max(0, contentWidth - frame.width);
+    const maxScrollY = Math.max(0, contentHeight - frame.height);
+    effectiveScrollX = Math.min(desiredScrollX, maxScrollX);
+    effectiveScrollY = Math.min(desiredScrollY, maxScrollY);
+    if (effectiveScrollX !== 0 || effectiveScrollY !== 0) {
+      laidOutChildren = laidOutChildren.map((ch) => translateFrames(ch, -effectiveScrollX, -effectiveScrollY));
     }
   }
 
@@ -274,6 +298,12 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     ...node,
     frame,
     content: laidOutChildren,
+    scrollMeta: {
+      contentWidth,
+      contentHeight,
+      effectiveScrollX,
+      effectiveScrollY,
+    },
   };
 }
 

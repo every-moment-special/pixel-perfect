@@ -7,13 +7,17 @@ class Event {
             process.stdin.resume();
         }
         process.stdin.setEncoding('utf8');
+        // Ensure stdin is flowing so we consume and prevent terminal echoing buffered data
+        try { process.stdin.resume(); } catch (_) {}
 
         this.listeners = {};
         // this.enableMouse();
         this.disableMouse();
 
         // Put TTY into raw, no-echo, non-canonical mode so input bytes are not printed
-        try { execSync('stty -echo -icanon min 1 time 0'); } catch (_) {}
+        if (process.stdin.isTTY) {
+          try { execSync('stty -echo -icanon min 1 time 0'); } catch (_) {}
+        }
 
         // Key Press + Mouse
         process.stdin.on('data', (data) => {
@@ -54,7 +58,7 @@ class Event {
         });
 
         // Ensure terminal settings are restored when exiting
-        const restoreEcho = () => { try { execSync('stty sane'); } catch (_) {} };
+        const restoreEcho = () => { if (process.stdin.isTTY) { try { execSync('stty sane'); } catch (_) {} } };
         process.on('exit', restoreEcho);
         process.on('SIGINT', () => { restoreEcho(); process.exit(); });
         process.on('SIGTERM', () => { restoreEcho(); process.exit(); });
