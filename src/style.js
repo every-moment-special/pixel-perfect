@@ -38,7 +38,9 @@
  * @property {'start'|'center'|'end'|'space-between'} justifyContent
  * @property {number} gap // integer >= 0; spacing for grid columns and rows
  * @property {'row'|'column'} flexDirection
- * @property {'visible'|'hidden'} overflow
+ * @property {'visible'|'hidden'|'auto'} overflow
+ * @property {number} scrollX // integer >= 0; used when overflow is 'auto'
+ * @property {number} scrollY // integer >= 0; used when overflow is 'auto'
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -84,6 +86,8 @@ const baseDefaults = Object.freeze({
   gap: 0,
   flexDirection: 'row',
   overflow: 'visible',
+  scrollX: 0,
+  scrollY: 0,
 });
 
 const defaultsByType = Object.freeze({
@@ -178,7 +182,9 @@ function normalizeStyle(type, rawStyle) {
   );
   const gap = Math.max(0, coerceInteger(s.gap, d.gap || 0));
   const flexDirection = oneOf(s.flexDirection, ['row', 'column'], d.flexDirection || 'row');
-  const overflow = oneOf(s.overflow, ['visible', 'hidden'], d.overflow || 'visible');
+  const overflow = oneOf(s.overflow, ['visible', 'hidden', 'auto'], d.overflow || 'visible');
+  const scrollX = Math.max(0, coerceInteger(s.scrollX, d.scrollX || 0));
+  const scrollY = Math.max(0, coerceInteger(s.scrollY, d.scrollY || 0));
 
   return {
     x,
@@ -197,6 +203,8 @@ function normalizeStyle(type, rawStyle) {
     gap,
     flexDirection,
     overflow,
+    scrollX,
+    scrollY,
   };
 }
 

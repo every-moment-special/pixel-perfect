@@ -284,8 +284,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     const height = frame.height;
     const bgColor = style.backgroundColor;
 
-    // establish clip rect if overflow is hidden
-    const childClip = style.overflow === 'hidden' ? { x, y, width, height } : clipRect;
+    // establish clip rect if overflow is hidden or auto (scroll area)
+    const childClip = (style.overflow === 'hidden' || style.overflow === 'auto') ? { x, y, width, height } : clipRect;
 
     for (let row = y; row < y + height; row++) {
       if (row < 0 || row >= buffer.length) continue;

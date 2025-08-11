@@ -3,6 +3,7 @@ const { setTerminalFontSize, isKitty } = require('./helper');
 const Interface = require('./interface.js');
 const { render } = require('./vdom');
 const { event } = require('./helper');
+const { state } = require('./state');
 
 async function main() {
   if (isKitty) {
@@ -10,10 +11,22 @@ async function main() {
   }
 
 
-  try {
+    try {
     let tree = Interface();
     render(tree);
     // await gui.start();
+    
+    // Scroll with arrow keys when overflow is auto
+    event.on('key:up', () => {
+      state.scrollY = Math.max(0, (state.scrollY || 0) - 1);
+      tree = Interface();
+      render(tree);
+    });
+    event.on('key:down', () => {
+      state.scrollY = (state.scrollY || 0) + 1;
+      tree = Interface();
+      render(tree);
+    });
 
     // Rebuild interface on resize to pick up new terminal dims used inside node styles
     let resizeTimer = null;

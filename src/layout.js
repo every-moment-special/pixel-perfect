@@ -261,6 +261,15 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     laidOutChildren = placed;
   }
 
+  // Apply scroll offsets for overflow:auto by translating children negatively
+  if (style.overflow === 'auto') {
+    const scrollX = Math.max(0, Number(style.scrollX) || 0);
+    const scrollY = Math.max(0, Number(style.scrollY) || 0);
+    if (scrollX !== 0 || scrollY !== 0) {
+      laidOutChildren = laidOutChildren.map((ch) => translateFrames(ch, -scrollX, -scrollY));
+    }
+  }
+
   return {
     ...node,
     frame,

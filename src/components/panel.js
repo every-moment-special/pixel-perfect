@@ -1,5 +1,6 @@
 const { element } = require('../vdom');
 const { terminal, readDirectory, currentPath } = require('../helper');
+const { state } = require('../state');
 
 const Panel = (style = {}, content = []) => {
   const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
@@ -26,45 +27,60 @@ const Panel = (style = {}, content = []) => {
         `size: ${terminal.width}x${terminal.height - 5}`
       )
     ]),
-    element('div', { width: terminal.width, height: terminal.height - 5, y: 7, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true, display: 'grid', gap: 5, backgroundColor: 'transparent', overflow: 'hidden' }, [
-      items.filter(item => item.type === 'media').map((item, index) => {
-        if (item.type === 'media') {
-          return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden' }, [
-            element(
-              'img',
-              { 
-                // x: (index * 64) + (index * 5),
-                width: 64,
-                // y: 2,
-                height: 32,
-                textAlign: 'left',
-                verticalAlign: 'top',
-                fontSize: 2,
-                pixelFont: true,
-                backgroundColor: 'blue',
-                overflow: 'hidden',
-              },
-              item.path
-            ),
+    element('div', {
+        width: terminal.width,
+        height: terminal.height - 5,
+        y: 7,
+        textAlign: 'left',
+        verticalAlign: 'top',
+        fontSize: 2,
+        pixelFont: true,
+        display: 'grid',
+        gap: 10,
+        backgroundColor: 'transparent', 
+        overflow: 'auto',
+        scrollY: state.scrollY || 0,
+        justifyContent: 'center',
+      }, [
+        items.filter(item => item.type === 'media').map((item, index) => {
+          if (item.type === 'media') {
+            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden' }, [
+              element(
+                'img',
+                { 
+                  // x: (index * 64) + (index * 5),
+                  width: 64,
+                  // y: 2,
+                  height: 32,
+                  textAlign: 'left',
+                  verticalAlign: 'top',
+                  fontSize: 2,
+                  pixelFont: true,
+                  backgroundColor: 'blue',
+                  overflow: 'hidden',
+                },
+                item.path
+              ),
 
-            element(
-              'text',
-              { 
-                // x: (index * 64) + (index * 5),
-                width: 64,
-                // y: 2 + 32 + 1,
-                textAlign: 'center',
-                verticalAlign: 'top',
-                fontSize: 1,
-                pixelFont: true,
-                backgroundColor: 'transparent'
-              },
-              item.name
-            )
-          ]);
-        }
-      }),
-    ])
+              element(
+                'text',
+                { 
+                  // x: (index * 64) + (index * 5),
+                  width: 64,
+                  // y: 2 + 32 + 1,
+                  textAlign: 'center',
+                  verticalAlign: 'top',
+                  fontSize: 1,
+                  pixelFont: true,
+                  backgroundColor: 'transparent'
+                },
+                item.name
+              )
+            ]);
+          }
+        }),
+      ]
+    )
   ];
 }
 

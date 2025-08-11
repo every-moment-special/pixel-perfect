@@ -1,3 +1,5 @@
+const { execSync } = require('child_process');
+
 class Event {
     constructor() {
         if (process.stdin.isTTY) {
@@ -9,6 +11,9 @@ class Event {
         this.listeners = {};
         // this.enableMouse();
         this.disableMouse();
+
+        // Put TTY into raw, no-echo, non-canonical mode so input bytes are not printed
+        try { execSync('stty -echo -icanon min 1 time 0'); } catch (_) {}
 
         // Key Press + Mouse
         process.stdin.on('data', (data) => {
@@ -47,6 +52,12 @@ class Event {
                 rows: process.stdout.rows
             });
         });
+
+        // Ensure terminal settings are restored when exiting
+        const restoreEcho = () => { try { execSync('stty sane'); } catch (_) {} };
+        process.on('exit', restoreEcho);
+        process.on('SIGINT', () => { restoreEcho(); process.exit(); });
+        process.on('SIGTERM', () => { restoreEcho(); process.exit(); });
     }
 
     enableMouse() {
@@ -84,6 +95,25 @@ class Event {
     }
 
     parseKey(key) {
+        // Common escape sequences for special keys
+        const arrows = {
+            '\u001b[A': 'up',
+            '\u001b[B': 'down',
+            '\u001b[C': 'right',
+            '\u001b[D': 'left',
+        };
+        const paging = {
+            '\u001b[5~': 'pageup',
+            '\u001b[6~': 'pagedown',
+        };
+
+        if (arrows[key]) {
+            return { name: arrows[key], ctrl: false, alt: false, shift: false };
+        }
+        if (paging[key]) {
+            return { name: paging[key], ctrl: false, alt: false, shift: false };
+        }
+
         const code = key.charCodeAt(0);
 
         // Ctrl + letter
