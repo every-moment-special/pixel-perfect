@@ -1,6 +1,7 @@
 const { element } = require('../vdom');
 const { terminal, readDirectory, currentPath } = require('../helper');
 const { state } = require('../state');
+const path = require('path');
 
 const Panel = (style = {}, content = []) => {
   const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
