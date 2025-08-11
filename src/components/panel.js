@@ -1,7 +1,44 @@
 const { element } = require('../vdom');
 const { terminal, readDirectory, currentPath } = require('../helper');
 const { state } = require('../state');
+const { measurePixelFont } = require('../pixelFont');
 const path = require('path');
+
+function truncateFilenameKeepExtension(filename, maxCellWidth, scale = 1) {
+  const ext = path.extname(filename);
+  const base = ext ? filename.slice(0, -ext.length) : filename;
+
+  // Fits as-is
+  if (measurePixelFont(filename, scale).cellCols <= maxCellWidth) return filename;
+
+  const ellipsis = '';
+
+  // If even ellipsis + ext does not fit, try trimming ext from the left; fallback to ellipsis only
+  if (measurePixelFont(ellipsis + ext, scale).cellCols > maxCellWidth) {
+    let shortExt = ext;
+    while (shortExt.length > 0 && measurePixelFont(ellipsis + shortExt, scale).cellCols > maxCellWidth) {
+      shortExt = shortExt.slice(1);
+    }
+    return shortExt.length > 0 ? ellipsis + shortExt : ellipsis;
+  }
+
+  // Binary search the longest prefix of base that fits with ellipsis + ext
+  let left = 0;
+  let right = base.length;
+  let best = '';
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const candidate = base.slice(0, mid) + ellipsis + ext;
+    const width = measurePixelFont(candidate, scale).cellCols;
+    if (width <= maxCellWidth) {
+      best = candidate;
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+  return best || (ellipsis + ext);
+}
 
 const Panel = (style = {}, content = []) => {
   const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
@@ -92,7 +129,7 @@ const Panel = (style = {}, content = []) => {
                   zIndex: 0,
                   color: isSelected ? 'cyan' : 'gray',
                 },
-                item.name
+                truncateFilenameKeepExtension(item.name, 64, 1)
               )
             ]);
           }
