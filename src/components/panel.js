@@ -11,6 +11,8 @@ const Panel = (style = {}, content = []) => {
     width: terminal.width,
     height: 5,
     backgroundColor: 'transparent',
+    zIndex: 10,
+    position: 'fixed',
   };
 
   return [
@@ -22,7 +24,8 @@ const Panel = (style = {}, content = []) => {
           fontSize: 2,
           pixelFont: true,
           backgroundColor: 'transparent',
-          color: 'white'
+          color: 'white',
+          zIndex: 1,
         },
         `size: ${terminal.width}x${terminal.height - 5}`
       )
@@ -39,13 +42,14 @@ const Panel = (style = {}, content = []) => {
         gap: 10,
         backgroundColor: 'transparent', 
         overflow: 'auto',
-        scrollbarWidth: 10,
+        scrollbarWidth: 1,
         scrollY: state.scrollY || 0,
         justifyContent: 'center',
+        zIndex: 0,
       }, [
         items.filter(item => item.type === 'media').map((item, index) => {
           if (item.type === 'media') {
-            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden' }, [
+            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
               element(
                 'img',
                 { 
@@ -59,6 +63,7 @@ const Panel = (style = {}, content = []) => {
                   pixelFont: true,
                   backgroundColor: 'blue',
                   overflow: 'hidden',
+                  zIndex: 0,
                 },
                 item.path
               ),
@@ -73,7 +78,8 @@ const Panel = (style = {}, content = []) => {
                   verticalAlign: 'top',
                   fontSize: 1,
                   pixelFont: true,
-                  backgroundColor: 'transparent'
+                  backgroundColor: 'transparent',
+                  zIndex: 0,
                 },
                 item.name
               )

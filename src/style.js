@@ -34,6 +34,8 @@
  * @property {number} fontSize // integer >= 1
  * @property {boolean} pixelFont
  * @property {NormalizedBorder} border
+ * @property {number} zIndex // integer; higher paints on top among siblings
+ * @property {'static'|'fixed'} position
  * @property {'none'|'block'|'grid'|'flex'} display // 'none', 'block', 'grid', 'flex'
  * @property {'start'|'center'|'end'|'space-between'} justifyContent
  * @property {number} gap // integer >= 0; spacing for grid columns and rows
@@ -82,6 +84,8 @@ const baseDefaults = Object.freeze({
   fontSize: 1,
   pixelFont: false,
   border: { width: 0, color: 'white', style: 'quarter' },
+  zIndex: 0,
+  position: 'static',
   display: 'block',
   justifyContent: 'start',
   gap: 0,
@@ -171,6 +175,8 @@ function normalizeStyle(type, rawStyle) {
   const verticalAlign = oneOf(s.verticalAlign, ['top', 'middle', 'bottom'], d.verticalAlign);
   const fontSize = Math.max(1, coerceInteger(s.fontSize, d.fontSize));
   const pixelFont = coerceBoolean(s.pixelFont, d.pixelFont);
+  const zIndex = coerceInteger(s.zIndex, d.zIndex || 0);
+  const position = oneOf(s.position, ['static', 'fixed'], d.position || 'static');
 
   // Border
   const border = normalizeBorder(type, s, d);
@@ -201,6 +207,8 @@ function normalizeStyle(type, rawStyle) {
     fontSize,
     pixelFont,
     border,
+    zIndex,
+    position,
     display,
     justifyContent,
     gap,

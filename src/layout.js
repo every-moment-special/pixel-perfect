@@ -64,7 +64,20 @@ const measureText = (node, style) => {
  */
 function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
   if (node == null) return node;
-  if (Array.isArray(node)) return node.map((n) => computeLayoutTree(n, terminal, parentAbsX, parentAbsY));
+  if (Array.isArray(node)) {
+    const laid = node.map((n) => computeLayoutTree(n, terminal, parentAbsX, parentAbsY));
+    // Sort top-level siblings by zIndex as well (stable for ties)
+    return laid
+      .map((ch, i) => ({ ch, i }))
+      .sort((a, b) => {
+        const za = (a.ch?.computedStyle?.zIndex) ?? 0;
+        const zb = (b.ch?.computedStyle?.zIndex) ?? 0;
+        if (za !== zb) return za - zb;
+        // For equal zIndex, earlier in source should render on top → sort so earlier appears later
+        return b.i - a.i;
+      })
+      .map(({ ch }) => ch);
+  }
   if (typeof node !== 'object') return node;
 
   const style = node.computedStyle || node.style || {};
@@ -87,6 +100,17 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
   // First, lay out children relative to our absolute origin. We'll position them precisely later.
   const children = Array.isArray(node.content) ? node.content : (node.content != null ? [node.content] : []);
   let laidOutChildren = children.map((child) => computeLayoutTree(child, terminal, absX, absY));
+  // Sort children by zIndex ascending, but keep stable order for equal zIndex
+  laidOutChildren = laidOutChildren
+    .map((ch, i) => ({ ch, i }))
+    .sort((a, b) => {
+      const za = (a.ch?.computedStyle?.zIndex) ?? 0;
+      const zb = (b.ch?.computedStyle?.zIndex) ?? 0;
+      if (za !== zb) return za - zb;
+      // For equal zIndex, earlier in source should render on top → sort so earlier appears later
+      return b.i - a.i;
+    })
+    .map(({ ch }) => ch);
 
   // Measure this node
   let measuredWidth = 0;
@@ -289,8 +313,13 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     const maxScrollY = Math.max(0, contentHeight - frame.height);
     effectiveScrollX = Math.min(desiredScrollX, maxScrollX);
     effectiveScrollY = Math.min(desiredScrollY, maxScrollY);
+    // Only translate non-fixed children; fixed elements (e.g. overlays) should ignore scroll
     if (effectiveScrollX !== 0 || effectiveScrollY !== 0) {
-      laidOutChildren = laidOutChildren.map((ch) => translateFrames(ch, -effectiveScrollX, -effectiveScrollY));
+      laidOutChildren = laidOutChildren.map((ch) => {
+        const pos = ch?.computedStyle?.position || 'static';
+        if (pos === 'fixed') return ch;
+        return translateFrames(ch, -effectiveScrollX, -effectiveScrollY);
+      });
     }
   }
 

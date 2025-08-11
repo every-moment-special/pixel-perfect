@@ -136,6 +136,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           buffer[cy][cx].char = ' ';
           buffer[cy][cx].fgColor = fgColor;
           buffer[cy][cx].bgColor = bgColor;
+          buffer[cy][cx].raw = null; // ensure we draw over any prior raw (e.g., img)
         }
       }
 
@@ -153,6 +154,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           buffer[cy][cx].char = QUAD[mask];
           buffer[cy][cx].fgColor = fgColor;
           buffer[cy][cx].bgColor = bgColor;
+          buffer[cy][cx].raw = null;
         }
       }
 
@@ -223,6 +225,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           }
           buffer[cy][cx].fgColor = fgColor;
           buffer[cy][cx].bgColor = bgColor;
+          buffer[cy][cx].raw = null;
         }
       }
     }
@@ -297,6 +300,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         buffer[row][col].char = ' ';
         buffer[row][col].bgColor = bgColor;
         buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
+        buffer[row][col].raw = null;
       }
     }
 
@@ -332,6 +336,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             buffer[row][col].char = '░';
             buffer[row][col].fgColor = style.color || 'white';
             buffer[row][col].bgColor = buffer[row][col].bgColor || 'transparent';
+            buffer[row][col].raw = null;
           }
         }
         // Draw thumb
@@ -342,6 +347,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             buffer[row][col].char = '█';
             buffer[row][col].fgColor = style.color || 'white';
             buffer[row][col].bgColor = buffer[row][col].bgColor || 'transparent';
+            buffer[row][col].raw = null;
           }
         }
       }
