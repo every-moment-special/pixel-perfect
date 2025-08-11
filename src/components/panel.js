@@ -6,6 +6,12 @@ const path = require('path');
 const Panel = (style = {}, content = []) => {
   const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
 
+  const mediaItems = items.filter(item => item.type === 'media');
+  const itemCount = mediaItems.length;
+  const selected = itemCount > 0
+    ? Math.max(0, Math.min(state.selectedIndex || 0, itemCount - 1))
+    : 0;
+
   style = {
     x: 0,
     y: 1,
@@ -48,7 +54,8 @@ const Panel = (style = {}, content = []) => {
         justifyContent: 'center',
         zIndex: 0,
       }, [
-        items.filter(item => item.type === 'media').map((item, index) => {
+        mediaItems.map((item, index) => {
+          const isSelected = selected === index;
           if (item.type === 'media') {
             return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
               element(
@@ -81,6 +88,7 @@ const Panel = (style = {}, content = []) => {
                   pixelFont: true,
                   backgroundColor: 'transparent',
                   zIndex: 0,
+                  color: isSelected ? 'cyan' : 'gray',
                 },
                 item.name
               )

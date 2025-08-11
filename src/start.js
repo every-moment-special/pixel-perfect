@@ -1,9 +1,10 @@
 const { exec } = require('child_process');
-const { setTerminalFontSize, isKitty } = require('./helper');
+const { setTerminalFontSize, isKitty, readDirectory } = require('./helper');
 const Interface = require('./interface.js');
 const { render } = require('./vdom');
 const { event } = require('./helper');
 const { state } = require('./state');
+const path = require('path');
 
 async function main() {
   if (isKitty) {
@@ -101,6 +102,33 @@ async function main() {
       const next = Math.max(0, Math.min(target, max));
       if (next === prev) return;
       state.scrollY = next;
+      tree = Interface();
+      laidOut = await render(tree);
+    });
+
+    // Selection left/right
+    event.on('key:left', async () => {
+      const resourcesDir = path.join(__dirname, '..', 'resources');
+      const items = readDirectory(resourcesDir).filter((it) => it.type === 'media');
+      const count = items.length;
+      if (count === 0) return;
+      const prev = state.selectedIndex || 0;
+      const next = (prev - 1 + count) % count;
+      if (next === prev) return;
+      state.selectedIndex = next;
+      tree = Interface();
+      laidOut = await render(tree);
+    });
+
+    event.on('key:right', async () => {
+      const resourcesDir = path.join(__dirname, '..', 'resources');
+      const items = readDirectory(resourcesDir).filter((it) => it.type === 'media');
+      const count = items.length;
+      if (count === 0) return;
+      const prev = state.selectedIndex || 0;
+      const next = (prev + 1) % count;
+      if (next === prev) return;
+      state.selectedIndex = next;
       tree = Interface();
       laidOut = await render(tree);
     });
