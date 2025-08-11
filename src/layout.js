@@ -290,7 +290,92 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     }
   }
   const contentWidth = Math.max(0, contentRightMost - frame.x);
-  const contentHeight = Math.max(0, contentBottomMost - frame.y);
+  let contentHeight = Math.max(0, contentBottomMost - frame.y);
+
+  // If overflow is auto and a vertical scrollbar would be visible, optionally reflow grid using reduced width
+  let scrollbarVisible = false;
+  const sbWidth = Math.max(1, Number(style.scrollbarWidth) || 1);
+  if (style.overflow === 'auto' && contentHeight > frame.height) {
+    scrollbarVisible = true;
+    const sbMarginRight = 1;
+    if (style.display === 'grid' && frame.width - (sbWidth + sbMarginRight) >= 1) {
+      // Reflow grid children to account for reduced content width (avoid overlap under scrollbar)
+      const containerWidth = frame.width - (sbWidth + sbMarginRight);
+      const gap = Math.max(0, Number(style.gap) || 0);
+      const rows = [];
+      let currentRowItems = [];
+      let currentRowWidth = 0;
+      let currentRowHeight = 0;
+      const finalizeRow = () => {
+        rows.push({ items: currentRowItems, rowWidth: currentRowWidth, rowHeight: currentRowHeight });
+        currentRowItems = [];
+        currentRowWidth = 0;
+        currentRowHeight = 0;
+      };
+      for (const ch of laidOutChildren) {
+        const chWidth = (ch && ch.frame && ch.frame.width) || 0;
+        const chHeight = (ch && ch.frame && ch.frame.height) || 0;
+        const gapsSoFar = Math.max(0, currentRowItems.length - 1) * gap;
+        const wouldExceed = currentRowItems.length > 0 && (currentRowWidth + chWidth + gapsSoFar) > containerWidth;
+        if (wouldExceed) finalizeRow();
+        currentRowItems.push(ch);
+        currentRowWidth += chWidth;
+        if (chHeight > currentRowHeight) currentRowHeight = chHeight;
+      }
+      if (currentRowItems.length > 0) finalizeRow();
+
+      // Position rows per justifyContent
+      let cursorY2 = frame.y;
+      const placed2 = [];
+      for (const row of rows) {
+        const count = row.items.length;
+        let startX2 = frame.x;
+        let extraGap2 = 0;
+        const fixedGapsWidth2 = Math.max(0, count - 1) * gap;
+        const contentWidth2 = row.rowWidth + fixedGapsWidth2;
+        switch (style.justifyContent) {
+          case 'center':
+            startX2 = frame.x + Math.floor((containerWidth - contentWidth2) / 2);
+            break;
+          case 'end':
+            startX2 = frame.x + (containerWidth - contentWidth2);
+            break;
+          case 'space-between':
+            if (count > 1) {
+              const free2 = containerWidth - contentWidth2;
+              extraGap2 = free2 > 0 ? Math.floor(free2 / (count - 1)) : 0;
+            }
+            break;
+          case 'start':
+          default:
+            break;
+        }
+        let cursorX2 = startX2;
+        for (const ch of row.items) {
+          const chWidth = (ch && ch.frame && ch.frame.width) || 0;
+          const dx = cursorX2 - ch.frame.x;
+          const dy = cursorY2 - ch.frame.y;
+          const translated = translateFrames(ch, dx, dy);
+          placed2.push(translated);
+          cursorX2 += chWidth + gap + extraGap2;
+        }
+        cursorY2 += row.rowHeight + Math.floor(gap / 2);
+      }
+      laidOutChildren = placed2;
+      // Recompute content bounds and height after reflow
+      contentRightMost = frame.x;
+      contentBottomMost = frame.y;
+      for (const ch of laidOutChildren) {
+        if (ch && ch.frame) {
+          const r = ch.frame.x + ch.frame.width;
+          const b = ch.frame.y + ch.frame.height;
+          if (r > contentRightMost) contentRightMost = r;
+          if (b > contentBottomMost) contentBottomMost = b;
+        }
+      }
+      contentHeight = Math.max(0, contentBottomMost - frame.y);
+    }
+  }
 
   // Apply scroll offsets for overflow:auto by translating children negatively, clamped to content size
   let effectiveScrollX = 0;
@@ -321,6 +406,7 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
       contentHeight,
       effectiveScrollX,
       effectiveScrollY,
+      scrollbarVisible,
       // Include grid row info if available
       rowTops: node.gridMeta?.rowTops || null,
       rowHeights: node.gridMeta?.rowHeights || null,

@@ -322,13 +322,25 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
 
     // Draw vertical scrollbar when overflowing and overflow is auto
     if (style.overflow === 'auto' && node.scrollMeta) {
-      const { contentHeight, effectiveScrollY } = node.scrollMeta;
+      const { contentHeight, effectiveScrollY, scrollbarVisible } = node.scrollMeta;
       const scrollable = contentHeight > height;
       if (scrollable && width >= 1 && height >= 3) {
         const sbWidth = Math.max(1, Number(style.scrollbarWidth) || 1);
+        const sbMarginRight = 1;
+        // Shrink content area under scrollbar to avoid overlap when painting children
+        const contentClip = scrollbarVisible ? { x, y, width: Math.max(0, width - (sbWidth + sbMarginRight)), height } : null;
+        // Repaint children again with tighter clip so they don't draw under the scrollbar
+        // Note: children's own rendering earlier already respected childClip, but this enforces right margin too
+        // Only needed if scrollbar is visible and contentClip narrower than full width
+        if (scrollbarVisible && contentClip.width < width) {
+          for (const c of childrenForPaint) {
+            await renderToBuffer(c, buffer, 0, 0, depth + 1, contentClip);
+          }
+        }
+
         const barLeft = x + width - sbWidth;
         const barRight = x + width - 1;
-        const trackTop = y + 0;
+        const trackTop = y + 1; // 1-cell top margin
         const trackHeight = height;
         const minThumbSize = Math.max(1, Math.floor(trackHeight * 0.1));
         const visibleRatio = Math.min(1, height / contentHeight);
@@ -341,7 +353,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         const thumbBottom = thumbTop + thumbSize - 1;
 
         // Draw track
-        for (let row = trackTop; row < trackTop + trackHeight; row++) {
+        for (let row = trackTop; row < trackTop + trackHeight - 1; row++) { // leave 1-cell bottom margin
           if (row < 0 || row >= buffer.length) continue;
           for (let col = barLeft; col <= barRight; col++) {
             if (col < 0 || col >= buffer[0].length) continue;

@@ -27,7 +27,7 @@ const Panel = (style = {}, content = []) => {
           color: 'white',
           zIndex: 1,
         },
-        `size: ${terminal.width}x${terminal.height - 5}`
+        `size: ${terminal.width}x${terminal.height * 2 - 1}`
       )
     ]),
     element('div', {
