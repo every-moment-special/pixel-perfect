@@ -226,7 +226,12 @@ async function main() {
       laidOut = await render(tree);
     });
 
-    // Mouse left click selects item
+    // Track last click for double-click detection
+    let lastClickTime = 0;
+    let lastClickIndex = -1;
+    const doubleClickThresholdMs = 500;
+
+    // Mouse click handling: left click selects/open on double-click, right click goes back
     const getTileIndexAtPoint = (container, px, py) => {
       if (!container) return -1;
       const children = Array.isArray(container.content) ? container.content : [];
@@ -242,17 +247,49 @@ async function main() {
     };
 
     event.on('click', async ({ x, y, button }) => {
-      if (button !== 0) return; // only left click
       const ctx = getGridContext();
       if (!ctx) return;
       const px = Math.max(0, (x || 1) - 1);
       const py = Math.max(0, (y || 1) - 1);
+      
+      // Right click -> go back one directory
+      if (button === 2) {
+        const parentPath = path.dirname(state.currentPath);
+        if (parentPath && parentPath !== state.currentPath) {
+          state.currentPath = parentPath;
+          state.selectedIndex = 0;
+          state.scrollY = 0;
+          tree = Interface();
+          laidOut = await render(tree);
+        }
+        return;
+      }
+
+      // Only handle selection/double-open for left click
+      if (button !== 0) return;
+
       const hit = getTileIndexAtPoint(ctx.container, px, py);
       if (hit < 0 || hit >= ctx.itemCount) return;
-      if (state.selectedIndex === hit) return;
+
+      const now = Date.now();
+      const isDoubleClick = (hit === lastClickIndex) && (now - lastClickTime <= doubleClickThresholdMs);
+      lastClickTime = now;
+      lastClickIndex = hit;
+
       state.selectedIndex = hit;
       const rowIndex = Math.floor(hit / Math.max(1, ctx.columns));
       ensureRowVisible(ctx, rowIndex);
+
+      if (isDoubleClick) {
+        const items = readDirectory(state.currentPath);
+        const selectedItem = items[hit];
+        if (selectedItem && selectedItem.type === 'directory') {
+          state.currentPath = path.join(state.currentPath, selectedItem.name);
+          state.selectedIndex = 0;
+          state.scrollY = 0;
+        }
+      }
+
       tree = Interface();
       laidOut = await render(tree);
     });
