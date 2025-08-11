@@ -2,6 +2,7 @@ const { exec } = require('child_process');
 const { setTerminalFontSize, isKitty } = require('./helper');
 const Interface = require('./interface.js');
 const { render } = require('./vdom');
+const { event } = require('./helper');
 
 async function main() {
   if (isKitty) {
@@ -13,6 +14,10 @@ async function main() {
     const interface = Interface();
     render(interface);
     // await gui.start();
+
+    event.on('resize', (size) => {
+      render(interface);
+    });
 
   } catch (err) {
     console.error("Startup error:", err);

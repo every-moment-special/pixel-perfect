@@ -1,14 +1,14 @@
 const { terminal, colors } = require('../helper');
 
 class Element {
-    constructor(x, y, width, height, children = [], backgroundColor = 'magenta') {
+    constructor(x, y, width, height, children = [], src = null) {
         this.terminal = terminal;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
         this.children = children;
-        this.backgroundColor = backgroundColor;
+        this.src = src;
 
         this.render();
     }

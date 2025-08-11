@@ -3,24 +3,41 @@ const fs = require('fs');
 const path = require('path');
 const Item = require('./item');
 const Terminal = require('./terminal.js');
+const Event = require('./event.js');
+const { Generator } = require('./generate');
+
+const event = new Event();
 
 const terminal = new Terminal();
+
 const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
 const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
+const currentPath = process.cwd();
+
 const colors = {
+    black: '\x1b[30m',
     white: '\x1b[37m',
     red: '\x1b[31m',
     blue: '\x1b[34m',
     cyan: '\x1b[36m',
+    bgblack: '\x1b[40m',
     bgwhite: '\x1b[47m',
     bgred: '\x1b[41m',
     bgblue: '\x1b[44m',
     bgcyan: '\x1b[46m',
     reset: '\x1b[0m',
     bgReset: '\x1b[49m',
+    transparent: '\x1b[39m',
+    bgTransparent: '\x1b[49m',
 };
+
+const generator = new Generator();
+
+const generate = (path, width, height) => {
+    return generator.generate(path, width, height);
+}
 
 const setTerminalFontSize = (size) => {
     return new Promise((resolve, reject) => {
@@ -78,4 +95,7 @@ module.exports = {
     extensions,
     terminal,
     colors,
+    event,
+    currentPath,
+    generate,
 }

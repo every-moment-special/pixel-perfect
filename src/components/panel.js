@@ -1,18 +1,41 @@
 const { element } = require('../vdom');
-const { terminal } = require('../helper');
+const { terminal, readDirectory, currentPath } = require('../helper');
 
 const Panel = (style = {}, content = []) => {
+  const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
+
   style = {
     x: 0,
     y: 2,
     width: terminal.width,
-    height: terminal.height - 2,
+    height: 5,
     backgroundColor: 'cyan'
   };
 
   return [
-    element('div', style, content = [
-      element('text', style = { color: 'blue', backgroundColor: 'black', width: 100, height: 30, textAlign: 'center', verticalAlign: 'middle', fontSize: 3, pixelFont: true, border: { width: 1, color: 'white' } }, content = ['test'])
+    element('div', style, [
+      element('text', { textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true }, 'test')
+    ]),
+    element('div', { width: terminal.width, height: terminal.height - 5, y: 7, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true }, [
+      items.filter(item => item.type === 'media').map((item, index) => {
+        if (item.type === 'media') {
+        return element(
+          'img',
+          { x: (index * 64) + (index * 5), width: 64, y: 2, height: 32, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true, backgroundColor: 'blue' },
+          item.path
+        );
+        }
+      }),
+
+      items.filter(item => item.type === 'media').map((item, index) => {
+        if (item.type === 'media') {
+        return element(
+          'text',
+          { x: (index * 64) + (index * 5), width: 64, y: 2 + 32 + 1, textAlign: 'center', verticalAlign: 'top', fontSize: 2, pixelFont: true, backgroundColor: 'transparent' },
+          item.name
+        );
+        }
+      })
     ])
   ];
 }

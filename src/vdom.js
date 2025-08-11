@@ -1,4 +1,4 @@
-const { terminal, colors } = require('./helper.js');
+const { terminal, colors, generate } = require('./helper.js');
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
 
@@ -16,24 +16,57 @@ const flattenContent = (content) => {
   return flat;
 }
 
-const element = (type, style = {}, ...content) => {
-  const normalizedContent = flattenContent(content).map((c) =>
-    isPrimitive(c) ? { type: 'text', style: style || {}, content: c || [] } : c
+const element = (type, style = {}, srcOrContent = null, ...restContent) => {
+  // Support flexible calling:
+  // - element(type, style, src, ...content)
+  // - element(type, style, ...content)  // src omitted
+  // - element(type, style, [children])  // third arg is content array
+
+  const looksLikeVNode = (v) => v && typeof v === 'object' && typeof v.type === 'string';
+
+  let src = null;
+  let rawContent = restContent;
+
+  const isContentLike = (v) => Array.isArray(v) || looksLikeVNode(v);
+
+  if (type === 'img') {
+    // For images, treat a string third argument as src by default
+    if (typeof srcOrContent === 'string') {
+      src = srcOrContent;
+    } else if (isContentLike(srcOrContent)) {
+      rawContent = [srcOrContent, ...restContent];
+    } else if (srcOrContent != null) {
+      src = srcOrContent;
+    }
+  } else if (type === 'text') {
+    // For text nodes, any primitive or node-like third arg is content
+    if (srcOrContent != null) rawContent = [srcOrContent, ...restContent];
+  } else {
+    // General elements: arrays or node-like => content; objects likely style mistake; primitives considered content
+    if (isContentLike(srcOrContent) || isPrimitive(srcOrContent)) {
+      rawContent = [srcOrContent, ...restContent];
+    } else if (srcOrContent != null) {
+      src = srcOrContent;
+    }
+  }
+
+  const normalizedContent = flattenContent(rawContent).map((c) =>
+    isPrimitive(c) ? { type: 'text', style: style || {}, src: src, content: c } : c
   );
-  return { type, style: style || {}, content: normalizedContent };
+  return { type, style: style || {}, src, content: normalizedContent };
 }
 
 const createBuffer = (width, height) => {
   const rows = new Array(height);
   for (let y = 0; y < height; y++) {
     const cols = new Array(width);
-    for (let x = 0; x < width; x++) cols[x] = { char: ' ', fgColor: 'white', bgColor: 'white' };
+    for (let x = 0; x < width; x++) cols[x] = { char: ' ', fgColor: 'transparent', bgColor: 'transparent', raw: null };
     rows[y] = cols;
   }
   return rows;
 }
 
-const writeToBuffer = (buffer, x, y, text, fgColor = 'white', bgColor = 'white') => {
+const writeToBuffer = (buffer, x, y, text, fgColor = 'transparent', bgColor = 'transparent') => {
   if (y < 0 || y >= buffer.length) return;
   const row = buffer[y];
   let cx = Math.max(0, x);
@@ -265,22 +298,22 @@ const drawBox = (buffer, x, y, width, height, title) => {
   }
 }
 
-const renderToBuffer = (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
+const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
   if (!node) return;
 
   if (Array.isArray(node)) {
-    for (const c of node) renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
+    for (const c of node) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
     return;
   }
 
-  const { type, style = {}, content = [] } = node;
+  const { type, style = {}, src = null, content = [] } = node;
 
   if (type === 'text') {
     const x = (style.x || 0) + offsetX;
     const y = (style.y || 0) + offsetY;
     const text = content != null ? String(content[0]?.content ?? content) : '';
-    const fgColor = style.color || 'white';
-    const bgColor = style.backgroundColor || 'black';
+    const fgColor = style.color || 'transparent';
+    const bgColor = style.backgroundColor || 'transparent';
     const textAlign = style.textAlign || 'left'; // 'left', 'center', 'right'
     const verticalAlign = style.verticalAlign || 'top'; // 'top', 'middle', 'bottom'
     const scale = Math.max(1, Math.floor(style.fontSize || 1));
@@ -513,6 +546,29 @@ const renderToBuffer = (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
     return;
   }
 
+  if (type === 'img') {
+    const x = (style.x || 0) + offsetX;
+    const y = (style.y || 0) + offsetY;
+    const width = style.width || terminal.width;
+    const height = style.height * 2 || terminal.height;
+
+    if (src) {
+      const cells = await generate(src, width, height);
+      for (const pixel of cells) {
+        const cx = x + pixel.x;
+        const cy = y + pixel.y;
+        if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
+        buffer[cy][cx].raw = (pixel.ansi || '') + (pixel.char || ' ');
+      }
+    }
+
+    for (const c of content) {
+      await renderToBuffer(c, buffer, x, y, depth + 1);
+    }
+
+    return;
+  }
+
   if (type === 'div') {
     const x = (style.x || 0) + offsetX;
     const y = (style.y || 0) + offsetY;
@@ -526,12 +582,12 @@ const renderToBuffer = (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
         if (col < 0 || col >= buffer[0].length) continue;
         buffer[row][col].char = ' ';
         buffer[row][col].bgColor = bgColor;
-        buffer[row][col].fgColor = buffer[row][col].fgColor || 'white';
+        buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
       }
     }
 
     for (const c of content) {
-      renderToBuffer(c, buffer, x, y, depth + 1);
+      await renderToBuffer(c, buffer, x, y, depth + 1);
     }
     // Draw border for div if requested (quarter blocks)
     if (style.border && (style.border.width || style.border.color)) {
@@ -542,15 +598,15 @@ const renderToBuffer = (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
     return;
   }
 
-  for (const c of content) renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
+  for (const c of content) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
 }
 
-const render = (root) => {
+const render = async (root) => {
   const width = Math.max(1, terminal.width || 80);
   const height = Math.max(1, terminal.height || 24);
 
   const buffer = createBuffer(width, height);
-  renderToBuffer(root, buffer, 0, 0);
+  await renderToBuffer(root, buffer, 0, 0);
 
   process.stdout.write('\x1b[2J\x1b[H');
 
@@ -562,6 +618,13 @@ const render = (root) => {
     prevBg = null;
     for (let x = 0; x < width; x++) {
       const cell = buffer[y][x];
+
+      if (cell.raw != null) {
+        process.stdout.write(cell.raw);
+        prevFg = null;
+        prevBg = null;
+        continue;
+      }
 
       if (cell.fgColor !== prevFg) {
         process.stdout.write(colors[cell.fgColor] || '');

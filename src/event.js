@@ -1,11 +1,14 @@
 class Event {
     constructor() {
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
+        if (process.stdin.isTTY) {
+            process.stdin.setRawMode(true);
+            process.stdin.resume();
+        }
         process.stdin.setEncoding('utf8');
 
         this.listeners = {};
-        this.enableMouse();
+        // this.enableMouse();
+        this.disableMouse();
 
         // Key Press + Mouse
         process.stdin.on('data', (data) => {
@@ -125,3 +128,5 @@ class Event {
         this.listeners[event].push(callback);
     }
 }
+
+module.exports = Event;
