@@ -38,6 +38,7 @@
  * @property {'start'|'center'|'end'|'space-between'} justifyContent
  * @property {number} gap // integer >= 0; spacing for grid columns and rows
  * @property {'row'|'column'} flexDirection
+ * @property {'visible'|'hidden'} overflow
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -82,6 +83,7 @@ const baseDefaults = Object.freeze({
   justifyContent: 'start',
   gap: 0,
   flexDirection: 'row',
+  overflow: 'visible',
 });
 
 const defaultsByType = Object.freeze({
@@ -176,6 +178,7 @@ function normalizeStyle(type, rawStyle) {
   );
   const gap = Math.max(0, coerceInteger(s.gap, d.gap || 0));
   const flexDirection = oneOf(s.flexDirection, ['row', 'column'], d.flexDirection || 'row');
+  const overflow = oneOf(s.overflow, ['visible', 'hidden'], d.overflow || 'visible');
 
   return {
     x,
@@ -193,6 +196,7 @@ function normalizeStyle(type, rawStyle) {
     justifyContent,
     gap,
     flexDirection,
+    overflow,
   };
 }
 

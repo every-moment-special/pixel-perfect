@@ -6,6 +6,11 @@ const { rasterizePixelFontCached, measurePixelFont, QUAD } = require('./pixelFon
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
 
+const getBgAnsi = (bgName) => {
+  if (bgName === 'transparent') return colors.bgTransparent || '';
+  return colors['bg' + bgName] || '';
+};
+
 const flattenContent = (content) => {
   const flat = [];
   for (const c of content) {
@@ -73,11 +78,11 @@ const createBuffer = (width, height) => {
 
 // removed local border helpers; now imported from borders.js
 
-const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0) => {
+const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0, clipRect = null) => {
   if (!node) return;
 
   if (Array.isArray(node)) {
-    for (const c of node) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
+    for (const c of node) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1, clipRect);
     return;
   }
 
@@ -124,6 +129,9 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
         for (let w = 0; w < width; w++) {
           const cx = x + w;
           const cy = y + h;
+          if (clipRect) {
+            if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+          }
           if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
           buffer[cy][cx].char = ' ';
           buffer[cy][cx].fgColor = fgColor;
@@ -138,6 +146,9 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
           if (mask === 0) continue;
           const cx = x + leftPadding + c;
           const cy = y + startRow + r;
+          if (clipRect) {
+            if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+          }
           if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
           buffer[cy][cx].char = QUAD[mask];
           buffer[cy][cx].fgColor = fgColor;
@@ -195,6 +206,9 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
       for (let w = 0; w < width; w++) {
         const cx = x + w;
         const cy = y + h;
+        if (clipRect) {
+          if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+        }
         if (cy >= 0 && cy < buffer.length && cx >= 0 && cx < buffer[0].length) {
           const withinVerticalBand = h >= startRow && h < startRow + bandHeight;
           if (withinVerticalBand) {
@@ -246,13 +260,16 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
       for (const pixel of cells) {
         const cx = x + pixel.x;
         const cy = y + pixel.y;
+        if (clipRect) {
+          if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+        }
         if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
         buffer[cy][cx].raw = (pixel.ansi || '') + (pixel.char || ' ');
       }
     }
 
     for (const c of content) {
-      await renderToBuffer(c, buffer, 0, 0, depth + 1);
+      await renderToBuffer(c, buffer, 0, 0, depth + 1, clipRect);
     }
 
     return;
@@ -267,9 +284,15 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
     const height = frame.height;
     const bgColor = style.backgroundColor;
 
+    // establish clip rect if overflow is hidden
+    const childClip = style.overflow === 'hidden' ? { x, y, width, height } : clipRect;
+
     for (let row = y; row < y + height; row++) {
       if (row < 0 || row >= buffer.length) continue;
       for (let col = x; col < x + width; col++) {
+        if (childClip) {
+          if (col < childClip.x || col >= childClip.x + childClip.width || row < childClip.y || row >= childClip.y + childClip.height) continue;
+        }
         if (col < 0 || col >= buffer[0].length) continue;
         buffer[row][col].char = ' ';
         buffer[row][col].bgColor = bgColor;
@@ -278,7 +301,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
     }
 
     for (const c of content) {
-      await renderToBuffer(c, buffer, 0, 0, depth + 1);
+      await renderToBuffer(c, buffer, 0, 0, depth + 1, childClip);
     }
     // Draw border for div if requested
     const border = style.border;
@@ -300,7 +323,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0)
     return;
   }
 
-  for (const c of content) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1);
+  for (const c of content) await renderToBuffer(c, buffer, offsetX, offsetY, depth + 1, clipRect);
 }
 
 const render = async (root) => {
@@ -335,7 +358,7 @@ const render = async (root) => {
         prevFg = cell.fgColor;
       }
       if (cell.bgColor !== prevBg) {
-        process.stdout.write(colors['bg' + cell.bgColor] || '');
+        process.stdout.write(getBgAnsi(cell.bgColor));
         prevBg = cell.bgColor;
       }
 

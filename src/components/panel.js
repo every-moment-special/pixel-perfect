@@ -6,28 +6,30 @@ const Panel = (style = {}, content = []) => {
 
   style = {
     x: 0,
-    y: 2,
+    y: 1,
     width: terminal.width,
     height: 5,
-    backgroundColor: 'cyan'
+    backgroundColor: 'transparent',
   };
 
   return [
     element('div', style, [
       element('text', {
-          textAlign: 'left',
+          width: terminal.width,
+          textAlign: 'center',
           verticalAlign: 'top',
           fontSize: 2,
           pixelFont: true,
-          backgroundColor: 'transparent'
+          backgroundColor: 'transparent',
+          color: 'white'
         },
         `size: ${terminal.width}x${terminal.height - 5}`
       )
     ]),
-    element('div', { width: terminal.width, height: terminal.height - 5, y: 7, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true, display: 'grid', gap: 5 }, [
+    element('div', { width: terminal.width, height: terminal.height - 5, y: 7, textAlign: 'left', verticalAlign: 'top', fontSize: 2, pixelFont: true, display: 'grid', gap: 5, backgroundColor: 'transparent', overflow: 'hidden' }, [
       items.filter(item => item.type === 'media').map((item, index) => {
         if (item.type === 'media') {
-          return element('div', { display: 'flex', flexDirection: 'column', gap: 1 }, [
+          return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden' }, [
             element(
               'img',
               { 
@@ -39,7 +41,8 @@ const Panel = (style = {}, content = []) => {
                 verticalAlign: 'top',
                 fontSize: 2,
                 pixelFont: true,
-                backgroundColor: 'blue'
+                backgroundColor: 'blue',
+                overflow: 'hidden',
               },
               item.path
             ),
