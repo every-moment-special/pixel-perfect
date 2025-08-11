@@ -7,9 +7,9 @@ const { state } = require('./state');
 const path = require('path');
 
 async function main() {
-  if (isKitty) {
-    await setTerminalFontSize(1);
-  }
+  // if (isKitty) {
+  //   await setTerminalFontSize(1);
+  // }
 
 
     try {
@@ -230,7 +230,7 @@ async function main() {
     // Selection left/right
     event.on('key:left', async () => {
       const resourcesDir = path.join(__dirname, '..', 'resources');
-      const items = readDirectory(resourcesDir).filter((it) => it.type === 'media');
+      const items = readDirectory(resourcesDir).sort((a, b) => a.type.localeCompare(b.type));
       const count = items.length;
       if (count === 0) return;
       const prev = state.selectedIndex || 0;
@@ -252,7 +252,7 @@ async function main() {
 
     event.on('key:right', async () => {
       const resourcesDir = path.join(__dirname, '..', 'resources');
-      const items = readDirectory(resourcesDir).filter((it) => it.type === 'media');
+      const items = readDirectory(resourcesDir).sort((a, b) => a.type.localeCompare(b.type));
       const count = items.length;
       if (count === 0) return;
       const prev = state.selectedIndex || 0;

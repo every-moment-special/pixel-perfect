@@ -1,5 +1,5 @@
 const { element } = require('../vdom');
-const { terminal, readDirectory, currentPath } = require('../helper');
+const { terminal, readDirectory, currentPath, isKitty } = require('../helper');
 const { state } = require('../state');
 const { measurePixelFont } = require('../pixelFont');
 const path = require('path');
@@ -43,7 +43,7 @@ function truncateFilenameKeepExtension(filename, maxCellWidth, scale = 1) {
 const Panel = (style = {}, content = []) => {
   const items = readDirectory(path.join(__dirname, '..', '..', 'resources'));
 
-  const mediaItems = items.filter(item => item.type === 'media');
+  const mediaItems = items.sort((a, b) => a.type.localeCompare(b.type));
   const itemCount = mediaItems.length;
   // Clamp selected index to valid range [0, itemCount - 1]
   const selected = itemCount > 0
@@ -70,7 +70,35 @@ const Panel = (style = {}, content = []) => {
           fontSize: 1,
           pixelFont: true,
           backgroundColor: 'transparent',
-          color: 'white',
+          color: 'cyan',
+          zIndex: 2,
+        },
+        `${currentPath.split('/').pop()}`
+      ),
+      element('text', {
+          // width: terminal.width,
+          y: 10,
+          height: 10,
+          textAlign: 'left',
+          verticalAlign: 'middle',
+          fontSize: 1,
+          pixelFont: true,
+          backgroundColor: 'transparent',
+          color: 'cyan',
+          zIndex: 2,
+        },
+        `Selected: ${selected+1} of ${itemCount}`
+      ),
+      element('text', {
+          width: terminal.width,
+          y: 10,
+          height: 10,
+          textAlign: 'right',
+          verticalAlign: 'middle',
+          fontSize: 1,
+          pixelFont: true,
+          backgroundColor: 'transparent',
+          color: 'cyan',
           zIndex: 1,
         },
         `Size: ${terminal.width}x${terminal.height * 2}`
@@ -78,12 +106,12 @@ const Panel = (style = {}, content = []) => {
     ]),
     element('div', {
         width: terminal.width,
-        height: terminal.height - 10,
-        y: 10,
+        height: terminal.height - 20,
+        y: 20,
         textAlign: 'left',
         verticalAlign: 'top',
         fontSize: 2,
-        pixelFont: true,
+        pixelFont: isKitty ? false : true,
         display: 'grid',
         gap: 10,
         backgroundColor: 'transparent', 
@@ -95,6 +123,46 @@ const Panel = (style = {}, content = []) => {
       }, [
         mediaItems.map((item, index) => {
           const isSelected = selected === index;
+
+          if (item.type === 'directory') {
+            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
+              element(
+                'img',
+                { 
+                  // x: (index * 64) + (index * 5),
+                  width: 64,
+                  // y: 2,
+                  height: 32,
+                  textAlign: 'left',
+                  verticalAlign: 'top',
+                  fontSize: 2,
+                  pixelFont: isKitty ? false : true,
+                  backgroundColor: 'transparent',
+                  overflow: 'hidden',
+                  zIndex: 0,
+                },
+                path.join(__dirname, '..', 'assets', 'dir.svg')
+              ),
+
+              element(
+                'text',
+                {
+                  // x: (index * 64) + (index * 5),
+                  width: 64,
+                  // y: 2 + 32 + 1,
+                  textAlign: 'center',
+                  verticalAlign: 'bottom',
+                  fontSize: 1,
+                  pixelFont: isKitty ? false : true,
+                  backgroundColor: 'transparent',
+                  zIndex: 0,
+                  color: isSelected ? 'cyan' : 'gray',
+                },
+                truncateFilenameKeepExtension(item.name, 64, 1)
+              )
+            ]);
+          }
+
           if (item.type === 'media') {
             return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
               element(
@@ -107,7 +175,7 @@ const Panel = (style = {}, content = []) => {
                   textAlign: 'left',
                   verticalAlign: 'top',
                   fontSize: 2,
-                  pixelFont: true,
+                  pixelFont: isKitty ? false : true,
                   backgroundColor: 'transparent',
                   overflow: 'hidden',
                   zIndex: 0,
@@ -124,7 +192,7 @@ const Panel = (style = {}, content = []) => {
                   textAlign: 'center',
                   verticalAlign: 'bottom',
                   fontSize: 1,
-                  pixelFont: true,
+                  pixelFont: isKitty ? false : true,
                   backgroundColor: 'transparent',
                   zIndex: 0,
                   color: isSelected ? 'cyan' : 'gray',
