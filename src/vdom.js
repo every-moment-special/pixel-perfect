@@ -410,6 +410,7 @@ const render = async (root) => {
     process.stdout.write('\x1b[0m\n');
   }
   process.stdout.write(`\x1b[${height};1H`);
+  return laidOutRoot;
 }
 
 module.exports = { element, render };

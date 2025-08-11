@@ -19,33 +19,61 @@ async function main() {
     process.stdout.write('\x1b[?12l');
 
     let tree = Interface();
-    render(tree);
+    let laidOut = await render(tree);
     // Extra paint shortly after start to wipe any startup logs (e.g., inspector message)
-    setTimeout(() => {
+    setTimeout(async () => {
       tree = Interface();
-      render(tree);
+      laidOut = await render(tree);
     }, 200);
     // await gui.start();
     
     // Scroll with arrow keys when overflow is auto
-    event.on('key:up', () => {
-      state.scrollY = Math.max(0, (state.scrollY || 0) - 1);
+    const getMaxScrollY = () => {
+      const containers = Array.isArray(laidOut) ? laidOut : [laidOut];
+      let maxScrollY = 0;
+      const scan = (node) => {
+        if (!node || typeof node !== 'object') return;
+        const s = node.computedStyle || {};
+        if (s.overflow === 'auto' && node.scrollMeta) {
+          const { contentHeight } = node.scrollMeta;
+          const h = node.frame?.height || 0;
+          maxScrollY = Math.max(maxScrollY, Math.max(0, contentHeight - h));
+        }
+        const children = Array.isArray(node.content) ? node.content : (node.content ? [node.content] : []);
+        for (const c of children) scan(c);
+      };
+      for (const n of containers) scan(n);
+      return maxScrollY;
+    };
+
+    event.on('key:up', async () => {
+      const prev = state.scrollY || 0;
+      const max = getMaxScrollY();
+      const next = Math.max(0, Math.min(prev - 1, max));
+      if (next === prev) return; // no change, skip rerender
+      state.scrollY = next;
       tree = Interface();
-      render(tree);
+      laidOut = await render(tree);
     });
-    event.on('key:down', () => {
-      state.scrollY = (state.scrollY || 0) + 1;
+    event.on('key:down', async () => {
+      const prev = state.scrollY || 0;
+      const max = getMaxScrollY();
+      const next = Math.max(0, Math.min(prev + 1, max));
+      if (next === prev) return; // no change, skip rerender
+      state.scrollY = next;
       tree = Interface();
-      render(tree);
+      laidOut = await render(tree);
     });
 
     // Rebuild interface on resize to pick up new terminal dims used inside node styles
     let resizeTimer = null;
-    event.on('resize', () => {
+    event.on('resize', async () => {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        tree = Interface();
-        render(tree);
+        (async () => {
+          tree = Interface();
+          laidOut = await render(tree);
+        })();
       }, 50);
     });
 
