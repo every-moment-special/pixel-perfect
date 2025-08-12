@@ -1,6 +1,6 @@
-const { element } = require('../vdom');
-const { terminal, isKitty } = require('../helper');
-const { state } = require('../state');
+const { element } = require('../modules/shadow-tree/vdom');
+const { terminal, isKitty } = require('../utils/helper');
+const { state } = require('../core/state');
 
 const Photo = (imagePath) => {
   const elements = [

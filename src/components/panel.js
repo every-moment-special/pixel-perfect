@@ -1,7 +1,7 @@
-const { element } = require('../vdom');
-const { terminal, readDirectory, isKitty } = require('../helper');
-const { state } = require('../state');
-const { measurePixelFont } = require('../pixelFont');
+const { element } = require('../modules/shadow-tree/vdom');
+const { terminal, readDirectory, isKitty } = require('../utils/helper');
+const { state } = require('../core/state');
+const { measurePixelFont } = require('../modules/pixel-font/pixelFont');
 const path = require('path');
 
 function truncateFilenameKeepExtension(filename, maxCellWidth, scale = 1) {

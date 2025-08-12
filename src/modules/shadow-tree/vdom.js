@@ -1,8 +1,8 @@
-const { terminal, colors, generate } = require('./helper.js');
+const { terminal, colors, generate } = require('../../utils/helper.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
 const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox } = require('./borders.js');
-const { rasterizePixelFontCached, measurePixelFont, HALFBLOCK } = require('./pixelFont.js');
+const { rasterizePixelFontCached, measurePixelFont, HALFBLOCK } = require('../pixel-font/pixelFont.js');
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
 

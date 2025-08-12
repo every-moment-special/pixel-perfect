@@ -1,10 +1,10 @@
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const Item = require('./item');
-const Terminal = require('./terminal.js');
+const Item = require('../core/item.js');
+const Terminal = require('../core/terminal.js');
 const Event = require('./event.js');
-const { Generator } = require('./generate');
+const { Generator } = require('./generate.js');
 
 const event = new Event();
 

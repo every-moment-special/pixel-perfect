@@ -1,7 +1,7 @@
-const Panel = require('./components/panel.js');
-const Photo = require('./components/photo.js');
-const { terminal } = require('./helper.js');
-const { state } = require('./state');
+const Panel = require('./panel.js');
+const Photo = require('./photo.js');
+const { terminal } = require('../utils/helper.js');
+const { state } = require('../core/state.js');
 
 const Interface = () => {
   // const style = { x: 0, y: 2, width: terminal.width, height: terminal.height - 2 };

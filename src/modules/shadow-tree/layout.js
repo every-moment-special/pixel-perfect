@@ -1,6 +1,6 @@
 'use strict';
 
-const { measurePixelFont } = require('./pixelFont.js');
+const { measurePixelFont } = require('../pixel-font/pixelFont.js');
 
 // Layout computation: computes absolute frames (x, y, width, height) for each node
 // based on its computedStyle and content, without any renderer-specific quirks
