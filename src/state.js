@@ -7,6 +7,8 @@ const state = {
   currentPath: path.join(__dirname, '..', 'resources'),
   view: 'grid',
   photoPath: null,
+  mediaIndex: 0,
+  mediaFiles: [],
 };
 
 module.exports = { state };

@@ -1,8 +1,9 @@
 const { element } = require('../vdom');
 const { terminal, isKitty } = require('../helper');
+const { state } = require('../state');
 
 const Photo = (imagePath) => {
-  return [
+  const elements = [
     element('div', {
       x: 0,
       y: 0,
@@ -24,6 +25,39 @@ const Photo = (imagePath) => {
       }, imagePath)
     ])
   ];
+
+  if (state.mediaFiles.length > 1) {
+    const currentIndex = state.mediaIndex + 1;
+    const totalCount = state.mediaFiles.length;
+    const infoText = `${currentIndex}/${totalCount}`;
+    
+    elements.push(
+      element('div', {
+        x: terminal.width - infoText.length - 2,
+        y: terminal.height - 2,
+        width: infoText.length + 2,
+        height: 1,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        zIndex: 10,
+      }, infoText)
+    );
+
+    const hintText = '← → navigate • backspace back';
+    elements.push(
+      element('div', {
+        x: 1,
+        y: terminal.height - 2,
+        width: hintText.length + 2,
+        height: 1,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        zIndex: 10,
+      }, hintText)
+    );
+  }
+
+  return elements;
 }
 
 module.exports = Photo;

@@ -163,8 +163,13 @@ async function main() {
             tree = Interface();
             laidOut = await render(tree);
           } else if (selectedItem.type === 'media') {
+            const mediaFiles = items.filter(item => item.type === 'media');
+            const mediaIndex = mediaFiles.findIndex(item => item.path === selectedItem.path);
+            
             state.view = 'photo';
             state.photoPath = selectedItem.path;
+            state.mediaFiles = mediaFiles;
+            state.mediaIndex = mediaIndex >= 0 ? mediaIndex : 0;
             tree = Interface();
             laidOut = await render(tree);
           }
@@ -176,6 +181,8 @@ async function main() {
       if (state.view === 'photo') {
         state.view = 'grid';
         state.photoPath = null;
+        state.mediaFiles = [];
+        state.mediaIndex = 0;
       } else {
         const parentPath = path.dirname(state.currentPath);
         if (!parentPath || parentPath === state.currentPath) return;
@@ -304,8 +311,13 @@ async function main() {
             state.selectedIndex = 0;
             state.scrollY = 0;
           } else if (selectedItem.type === 'media') {
+            const mediaFiles = items.filter(item => item.type === 'media');
+            const mediaIndex = mediaFiles.findIndex(item => item.path === selectedItem.path);
+            
             state.view = 'photo';
             state.photoPath = selectedItem.path;
+            state.mediaFiles = mediaFiles;
+            state.mediaIndex = mediaIndex >= 0 ? mediaIndex : 0;
           }
         }
       }
@@ -316,6 +328,18 @@ async function main() {
 
     // Selection left/right
     event.on('key:left', async () => {
+      if (state.view === 'photo' && state.mediaFiles.length > 0) {
+        const prev = state.mediaIndex || 0;
+        const next = (prev - 1 + state.mediaFiles.length) % state.mediaFiles.length;
+        if (next !== prev) {
+          state.mediaIndex = next;
+          state.photoPath = state.mediaFiles[next].path;
+          tree = Interface();
+          laidOut = await render(tree);
+        }
+        return;
+      }
+
       const resourcesDir = path.join(__dirname, '..', 'resources');
       const items = readDirectory(resourcesDir).sort((a, b) => a.type.localeCompare(b.type));
       const count = items.length;
@@ -338,6 +362,18 @@ async function main() {
     });
 
     event.on('key:right', async () => {
+      if (state.view === 'photo' && state.mediaFiles.length > 0) {
+        const prev = state.mediaIndex || 0;
+        const next = (prev + 1) % state.mediaFiles.length;
+        if (next !== prev) {
+          state.mediaIndex = next;
+          state.photoPath = state.mediaFiles[next].path;
+          tree = Interface();
+          laidOut = await render(tree);
+        }
+        return;
+      }
+
       const resourcesDir = path.join(__dirname, '..', 'resources');
       const items = readDirectory(resourcesDir).sort((a, b) => a.type.localeCompare(b.type));
       const count = items.length;
