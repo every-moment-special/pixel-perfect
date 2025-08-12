@@ -5,6 +5,7 @@ const Item = require('../core/item.js');
 const Terminal = require('../core/terminal.js');
 const Event = require('./event.js');
 const { Generator } = require('./generate.js');
+const { measurePixelFont } = require('../modules/pixel-font/pixelFont.js');
 
 const event = new Event();
 
@@ -89,6 +90,42 @@ const readDirectory = (currentPath) => {
     }
 }
 
+const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1) => {
+    const ext = path.extname(filename);
+    const base = ext ? filename.slice(0, -ext.length) : filename;
+  
+    // Fits as-is
+    if (measurePixelFont(filename, scale).cellCols <= maxCellWidth) return filename;
+  
+    const ellipsis = '';
+  
+    // If even ellipsis + ext does not fit, try trimming ext from the left; fallback to ellipsis only
+    if (measurePixelFont(ellipsis + ext, scale).cellCols > maxCellWidth) {
+      let shortExt = ext;
+      while (shortExt.length > 0 && measurePixelFont(ellipsis + shortExt, scale).cellCols > maxCellWidth) {
+        shortExt = shortExt.slice(1);
+      }
+      return shortExt.length > 0 ? ellipsis + shortExt : ellipsis;
+    }
+  
+    // Binary search the longest prefix of base that fits with ellipsis + ext
+    let left = 0;
+    let right = base.length;
+    let best = '';
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      const candidate = base.slice(0, mid) + ellipsis + ext;
+      const width = measurePixelFont(candidate, scale).cellCols;
+      if (width <= maxCellWidth) {
+        best = candidate;
+        left = mid + 1;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return best || (ellipsis + ext);
+  }
+
 module.exports = {
     setTerminalFontSize,
     readDirectory,
@@ -100,4 +137,5 @@ module.exports = {
     event,
     currentPath,
     generate,
+    truncateFilenameKeepExtension,
 }

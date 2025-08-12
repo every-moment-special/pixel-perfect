@@ -1,5 +1,5 @@
 const { Generator } = require('./generate');
-const { display } = require('./utils/display');
+const { display } = require('./display');
 const fs = require('fs');
 const path = require('path');
 

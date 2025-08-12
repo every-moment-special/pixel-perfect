@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { display } = require('./utils/display');
+const { display } = require('./display');
 const sharp = require('sharp');
 
 const CONFIG = {
