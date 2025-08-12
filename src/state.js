@@ -1,7 +1,5 @@
 const path = require('path');
 
-// Shared UI state
-
 const state = {
   scrollX: 0,
   scrollY: 0,
