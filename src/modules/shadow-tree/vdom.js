@@ -1,7 +1,7 @@
 const { terminal, colors, generate, getCachedOrGenerateImage } = require('../../utils/helper.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
-const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox } = require('./borders.js');
+const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox, applyRoundedCorners } = require('./borders.js');
 const { rasterizePixelFontCached, measurePixelFont, HALFBLOCK } = require('../pixel-font/pixelFont.js');
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
@@ -480,6 +480,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
+    // Apply rounded corners to background
+    if (style.borderRadius > 0) {
+      applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
+    }
+
     if (src) {
       const genHeight = (style.height != null) ? height * 2 : height;
       const cells = await getCachedOrGenerateImage(src, width, genHeight);
@@ -500,6 +505,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       : [];
     for (const c of childrenForPaint) {
       await renderToBuffer(c, buffer, 0, 0, depth + 1, clipRect);
+    }
+
+    // Apply rounded corners to image pixels as well
+    if (style.borderRadius > 0) {
+      applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
 
     return;
@@ -529,6 +539,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
         buffer[row][col].raw = null;
       }
+    }
+
+    // Apply rounded corners to background
+    if (style.borderRadius > 0) {
+      applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
 
     // Paint children sorted by zIndex so higher zIndex paint later (on top)
@@ -611,6 +626,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         default:
           drawQuarterBlockBorder(buffer, x, y, width, height, bw, bColor);
       }
+    }
+
+    // Apply rounded corners to border as well
+    if (style.borderRadius > 0) {
+      applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
     return;
   }

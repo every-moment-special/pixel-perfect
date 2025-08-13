@@ -96,7 +96,16 @@ const Panel = (style = {}, content = []) => {
           const isSelected = selected === index;
 
           if (item.type === 'directory') {
-            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
+            return element('div', { 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1, 
+              backgroundColor: 'transparent', 
+              overflow: 'hidden', 
+              zIndex: 0,
+              // borderRadius: 2,
+              // border: { width: 1, color: 'red', style: 'box' }
+            }, [
               element(
                 'img',
                 { 
@@ -115,61 +124,70 @@ const Panel = (style = {}, content = []) => {
                 path.join(__dirname, '..', 'assets', 'dir.svg')
               ),
 
-              // element(
-              //   'text',
-              //   {
-              //     // x: (index * 64) + (index * 5),
-              //     width: 64,
-              //     // y: 2 + 32 + 1,
-              //     textAlign: 'center',
-              //     verticalAlign: 'bottom',
-              //     fontSize: 1,
-              //     pixelFont: true,
-              //     backgroundColor: 'transparent',
-              //     zIndex: 0,
-              //     color: isSelected ? 'cyan' : 'gray',
-              //   },
-              //   truncateFilenameKeepExtension(item.name, 64, 1)
-              // )
+              element(
+                'text',
+                {
+                  // x: (index * 64) + (index * 5),
+                  width: 64,
+                  // y: 2 + 32 + 1,
+                  textAlign: 'center',
+                  verticalAlign: 'bottom',
+                  fontSize: 1,
+                  pixelFont: true,
+                  backgroundColor: 'transparent',
+                  zIndex: 0,
+                  color: isSelected ? 'cyan' : 'gray',
+                },
+                truncateFilenameKeepExtension(item.name, 64, 1)
+              ),
             ]);
           }
 
           if (item.type === 'media') {
-            return element('div', { display: 'flex', flexDirection: 'column', gap: 1, backgroundColor: 'transparent', overflow: 'hidden', zIndex: 0 }, [
-              element(
-                'img',
-                { 
-                  // x: (index * 64) + (index * 5),
-                  width: 64,
-                  // y: 2,
-                  height: 32,
-                  textAlign: 'left',
-                  verticalAlign: 'top',
-                  fontSize: 2,
-                  pixelFont: true,
-                  backgroundColor: 'transparent',
-                  overflow: 'hidden',
-                  zIndex: 0,
-                },
-                item.path
-              ),
+            return element('div', {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                backgroundColor: 'transparent',
+                overflow: 'hidden',
+                zIndex: 0,
+                // borderRadius: 1,
+                // border: { width: 1, color: 'red', style: 'box' }
+              }, [
+                element(
+                  'img',
+                  { 
+                    // x: (index * 64) + (index * 5),
+                    width: 64,
+                    // y: 2,
+                    height: 32,
+                    textAlign: 'left',
+                    verticalAlign: 'top',
+                    fontSize: 2,
+                    pixelFont: true,
+                    backgroundColor: 'transparent',
+                    overflow: 'hidden',
+                    zIndex: 0,
+                  },
+                  item.path
+                ),
 
-              // element(
-              //   'text',
-              //   {
-              //     // x: (index * 64) + (index * 5),
-              //     width: 64,
-              //     // y: 2 + 32 + 1,
-              //     textAlign: 'center',
-              //     verticalAlign: 'bottom',
-              //     fontSize: 1,
-              //     pixelFont: true,
-              //     backgroundColor: 'transparent',
-              //     zIndex: 0,
-              //     color: isSelected ? 'cyan' : 'gray',
-              //   },
-              //   truncateFilenameKeepExtension(item.name, 64, 1)
-              // )
+                element(
+                  'text',
+                  {
+                    // x: (index * 64) + (index * 5),
+                    width: 64,
+                    // y: 2 + 32 + 1,
+                    textAlign: 'center',
+                    verticalAlign: 'bottom',
+                    fontSize: 1,
+                    pixelFont: true,
+                    backgroundColor: 'transparent',
+                    zIndex: 0,
+                    color: isSelected ? 'cyan' : 'gray',
+                  },
+                  truncateFilenameKeepExtension(item.name, 64, 1)
+                ),
             ]);
           }
         }),
