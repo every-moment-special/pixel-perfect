@@ -46,43 +46,43 @@ const Panel = (style = {}, content = []) => {
         },
         `${(state.currentPath || '').split('/').pop()}`
       ),
-      element('text', {
-          // width: terminal.width,
-          y: 10,
-          height: 10,
-          textAlign: 'left',
-          verticalAlign: 'middle',
-          fontSize: 1,
-          pixelFont: true,
-          backgroundColor: 'transparent',
-          color: 'cyan',
-          zIndex: 2,
-        },
-        `Selected: ${selected+1} of ${itemCount}`
-      ),
-      element('text', {
-          width: terminal.width,
-          y: 10,
-          height: 10,
-          textAlign: 'right',
-          verticalAlign: 'middle',
-          fontSize: 1,
-          pixelFont: true,
-          backgroundColor: 'transparent',
-          color: 'cyan',
-          zIndex: 1,
-        },
-        `Size: ${terminal.width}x${terminal.height * 2}`
-      )
+      // element('text', {
+      //     // width: terminal.width,
+      //     y: 10,
+      //     height: 10,
+      //     textAlign: 'left',
+      //     verticalAlign: 'middle',
+      //     fontSize: 1,
+      //     pixelFont: true,
+      //     backgroundColor: 'transparent',
+      //     color: 'cyan',
+      //     zIndex: 2,
+      //   },
+      //   `Selected: ${selected+1} of ${itemCount}`
+      // ),
+      // element('text', {
+      //     width: terminal.width,
+      //     y: 10,
+      //     height: 10,
+      //     textAlign: 'right',
+      //     verticalAlign: 'middle',
+      //     fontSize: 1,
+      //     pixelFont: true,
+      //     backgroundColor: 'transparent',
+      //     color: 'cyan',
+      //     zIndex: 1,
+      //   },
+      //   `Size: ${terminal.width}x${terminal.height * 2}`
+      // )
     ]),
     element('div', {
         width: terminal.width,
-        height: terminal.height - 20,
-        y: 20,
+        height: terminal.height - 10,
+        y: 10,
         textAlign: 'left',
         verticalAlign: 'top',
         fontSize: 2,
-        pixelFont: isKitty ? false : true,
+        pixelFont: true,
         display: 'grid',
         gap: 10,
         backgroundColor: 'transparent', 
@@ -107,7 +107,7 @@ const Panel = (style = {}, content = []) => {
                   textAlign: 'left',
                   verticalAlign: 'top',
                   fontSize: 2,
-                  pixelFont: isKitty ? false : true,
+                  pixelFont: true,
                   backgroundColor: 'transparent',
                   overflow: 'hidden',
                   zIndex: 0,
@@ -115,22 +115,22 @@ const Panel = (style = {}, content = []) => {
                 path.join(__dirname, '..', 'assets', 'dir.svg')
               ),
 
-              element(
-                'text',
-                {
-                  // x: (index * 64) + (index * 5),
-                  width: 64,
-                  // y: 2 + 32 + 1,
-                  textAlign: 'center',
-                  verticalAlign: 'bottom',
-                  fontSize: 1,
-                  pixelFont: isKitty ? false : true,
-                  backgroundColor: 'transparent',
-                  zIndex: 0,
-                  color: isSelected ? 'cyan' : 'gray',
-                },
-                truncateFilenameKeepExtension(item.name, 64, 1)
-              )
+              // element(
+              //   'text',
+              //   {
+              //     // x: (index * 64) + (index * 5),
+              //     width: 64,
+              //     // y: 2 + 32 + 1,
+              //     textAlign: 'center',
+              //     verticalAlign: 'bottom',
+              //     fontSize: 1,
+              //     pixelFont: true,
+              //     backgroundColor: 'transparent',
+              //     zIndex: 0,
+              //     color: isSelected ? 'cyan' : 'gray',
+              //   },
+              //   truncateFilenameKeepExtension(item.name, 64, 1)
+              // )
             ]);
           }
 
@@ -146,7 +146,7 @@ const Panel = (style = {}, content = []) => {
                   textAlign: 'left',
                   verticalAlign: 'top',
                   fontSize: 2,
-                  pixelFont: isKitty ? false : true,
+                  pixelFont: true,
                   backgroundColor: 'transparent',
                   overflow: 'hidden',
                   zIndex: 0,
@@ -154,22 +154,22 @@ const Panel = (style = {}, content = []) => {
                 item.path
               ),
 
-              element(
-                'text',
-                {
-                  // x: (index * 64) + (index * 5),
-                  width: 64,
-                  // y: 2 + 32 + 1,
-                  textAlign: 'center',
-                  verticalAlign: 'bottom',
-                  fontSize: 1,
-                  pixelFont: isKitty ? false : true,
-                  backgroundColor: 'transparent',
-                  zIndex: 0,
-                  color: isSelected ? 'cyan' : 'gray',
-                },
-                truncateFilenameKeepExtension(item.name, 64, 1)
-              )
+              // element(
+              //   'text',
+              //   {
+              //     // x: (index * 64) + (index * 5),
+              //     width: 64,
+              //     // y: 2 + 32 + 1,
+              //     textAlign: 'center',
+              //     verticalAlign: 'bottom',
+              //     fontSize: 1,
+              //     pixelFont: true,
+              //     backgroundColor: 'transparent',
+              //     zIndex: 0,
+              //     color: isSelected ? 'cyan' : 'gray',
+              //   },
+              //   truncateFilenameKeepExtension(item.name, 64, 1)
+              // )
             ]);
           }
         }),

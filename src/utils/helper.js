@@ -25,6 +25,7 @@ const colors = {
     blue: '\x1b[34m',
     cyan: '\x1b[36m',
     bgblack: '\x1b[40m',
+    bgpink: '\x1b[105m',
     bggray: '\x1b[100m',
     bgwhite: '\x1b[47m',
     bgred: '\x1b[41m',

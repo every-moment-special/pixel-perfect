@@ -463,6 +463,22 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     const y = frame.y;
     const width = frame.width;
     const height = frame.height;
+    const bgColor = style.backgroundColor;
+
+    // Fill the entire image area with background color first
+    for (let row = y; row < y + height; row++) {
+      if (row < 0 || row >= buffer.length) continue;
+      for (let col = x; col < x + width; col++) {
+        if (clipRect) {
+          if (col < clipRect.x || col >= clipRect.x + clipRect.width || row < clipRect.y || row >= clipRect.y + clipRect.height) continue;
+        }
+        if (col < 0 || col >= buffer[0].length) continue;
+        buffer[row][col].char = ' ';
+        buffer[row][col].bgColor = bgColor;
+        buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
+        buffer[row][col].raw = null;
+      }
+    }
 
     if (src) {
       const genHeight = (style.height != null) ? height * 2 : height;
