@@ -9,6 +9,9 @@ const state = {
   photoPath: null,
   mediaIndex: 0,
   mediaFiles: [],
+  // Cache for generated directory item images
+  directoryItemCache: new Map(), // key: itemPath, value: { cells, timestamp }
+  lastDirectoryRead: null, // timestamp of last directory read
 };
 
 module.exports = { state };

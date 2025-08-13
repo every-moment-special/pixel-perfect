@@ -124,7 +124,51 @@ const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1) => {
       }
     }
     return best || (ellipsis + ext);
-  }
+};
+
+// Cache for generated directory item images
+const getCachedOrGenerateImage = async (itemPath, width, height) => {
+    const { state } = require('../core/state');
+    const cacheKey = `${itemPath}:${width}:${height}`;
+    
+    // Check if we have a cached version
+    const cached = state.directoryItemCache.get(cacheKey);
+    if (cached) {
+        // Check if file has been modified since cache
+        try {
+            const stats = fs.statSync(itemPath);
+            if (stats.mtime.getTime() <= cached.timestamp) {
+                return cached.cells;
+            }
+        } catch (error) {
+            // File might not exist anymore, continue to regenerate
+        }
+    }
+    
+    // Generate new image
+    const cells = await generate(itemPath, width, height);
+    
+    // Cache the result
+    state.directoryItemCache.set(cacheKey, {
+        cells,
+        timestamp: Date.now()
+    });
+    
+    return cells;
+};
+
+// Clean up old cache entries (older than 5 minutes)
+const cleanupImageCache = () => {
+    const { state } = require('../core/state');
+    const now = Date.now();
+    const maxAge = 5 * 60 * 1000; // 5 minutes
+    
+    for (const [key, value] of state.directoryItemCache.entries()) {
+        if (now - value.timestamp > maxAge) {
+            state.directoryItemCache.delete(key);
+        }
+    }
+};
 
 module.exports = {
     setTerminalFontSize,
@@ -138,4 +182,6 @@ module.exports = {
     currentPath,
     generate,
     truncateFilenameKeepExtension,
+    getCachedOrGenerateImage,
+    cleanupImageCache,
 }

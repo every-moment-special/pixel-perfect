@@ -1,5 +1,5 @@
 const { exec } = require('child_process');
-const { setTerminalFontSize, isKitty, readDirectory } = require('./utils/helper.js');
+const { setTerminalFontSize, isKitty, readDirectory, cleanupImageCache } = require('./utils/helper.js');
 const Interface = require('./components/interface.js');
 const { render } = require('./modules/shadow-tree/vdom.js');
 const { event } = require('./utils/helper.js');
@@ -406,6 +406,11 @@ async function main() {
         })();
       }, 50);
     });
+
+    // Periodic cache cleanup to prevent memory leaks
+    setInterval(() => {
+      cleanupImageCache();
+    }, 60000); // Clean up every minute
 
   } catch (err) {
     console.error("Startup error:", err);

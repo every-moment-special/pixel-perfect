@@ -1,4 +1,4 @@
-const { terminal, colors, generate } = require('../../utils/helper.js');
+const { terminal, colors, generate, getCachedOrGenerateImage } = require('../../utils/helper.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
 const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox } = require('./borders.js');
@@ -466,7 +466,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
 
     if (src) {
       const genHeight = (style.height != null) ? height * 2 : height;
-      const cells = await generate(src, width, genHeight);
+      const cells = await getCachedOrGenerateImage(src, width, genHeight);
       for (const pixel of cells) {
         const cx = x + pixel.x;
         const cy = y + pixel.y;

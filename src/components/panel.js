@@ -6,6 +6,14 @@ const path = require('path');
 const Panel = (style = {}, content = []) => {
   const items = readDirectory(state.currentPath);
 
+  // Check if directory has changed and clear cache if needed
+  const currentTime = Date.now();
+  if (state.lastDirectoryRead !== state.currentPath) {
+    // Directory changed, clear the cache
+    state.directoryItemCache.clear();
+    state.lastDirectoryRead = state.currentPath;
+  }
+
   const mediaItems = items.sort((a, b) => a.type.localeCompare(b.type));
   const itemCount = mediaItems.length;
   // Clamp selected index to valid range [0, itemCount - 1]
