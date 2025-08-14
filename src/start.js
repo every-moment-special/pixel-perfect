@@ -350,7 +350,7 @@ async function main() {
         return;
       }
 
-      const resourcesDir = path.join(__dirname);
+      const resourcesDir = path.join(state.currentPath);
       const items = readDirectory(resourcesDir).sort((a, b) => a.type.localeCompare(b.type));
       const count = items.length;
       if (count === 0) return;
@@ -384,7 +384,7 @@ async function main() {
         return;
       }
 
-      const resourcesDir = path.join(__dirname);
+      const resourcesDir = path.join(state.currentPath);
       const items = readDirectory(resourcesDir).sort((a, b) => a.type.localeCompare(b.type));
       const count = items.length;
       if (count === 0) return;
