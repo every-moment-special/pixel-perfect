@@ -279,9 +279,11 @@ class Player {
     }
 
     async setupControls() {
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-        process.stdin.setEncoding('utf8');
+        if (process.stdin.isTTY) {
+            process.stdin.setRawMode(true);
+            process.stdin.resume();
+            process.stdin.setEncoding('utf8');
+        }
 
         process.on('exit', () => {
             this.showCursor();

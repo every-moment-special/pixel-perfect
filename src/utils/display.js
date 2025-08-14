@@ -32,7 +32,9 @@ const display = (data) => {
     
     process.stdout.write(`\x1b[${process.stdout.rows};1H`);
     
-    process.stdin.setRawMode(true);
+    if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+    }
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
 

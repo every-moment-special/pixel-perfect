@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "main": "src/generate.js",
     "type": "commonjs",
+    "bin": {
+        "pp": "src/start.js"
+    },
     "scripts": {
         "gen": "node --max-old-space-size=4096 src/utils/generate.js",
         "see": "node --max-old-space-size=2048 src/utils/display.js",

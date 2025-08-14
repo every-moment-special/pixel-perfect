@@ -124,7 +124,7 @@ const Panel = (style = {}, content = []) => {
                   fontFamily: 'compact',
                   backgroundColor: 'transparent',
                   zIndex: 0,
-                  color: isSelected ? 'gray' : 'white',
+                  color: isSelected ? 'white' : 'gray',
                 },
                 truncateFilenameKeepExtension(item.name, 64, 1, 'compact')
               ),
@@ -173,7 +173,7 @@ const Panel = (style = {}, content = []) => {
                     fontFamily: 'compact',
                     backgroundColor: 'transparent',
                     zIndex: 0,
-                    color: isSelected ? 'gray' : 'white',
+                    color: isSelected ? 'white' : 'gray',
                   },
                   truncateFilenameKeepExtension(item.name, 64, 1, 'compact')
                 ),
