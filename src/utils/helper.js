@@ -93,13 +93,13 @@ const readDirectory = (currentPath) => {
 }
 
 const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1, fontFamily = 'full') => {
-    const ext = path.extname(filename);
+    const ext = path.extname(filename).slice(1);
     const base = ext ? filename.slice(0, -ext.length) : filename;
   
     // Fits as-is
     if (measurePixelFont(filename, scale, fontFamily).cellCols <= maxCellWidth) return filename;
   
-    const ellipsis = '';
+    const ellipsis = '...';
   
     // If even ellipsis + ext does not fit, try trimming ext from the left; fallback to ellipsis only
     if (measurePixelFont(ellipsis + ext, scale, fontFamily).cellCols > maxCellWidth) {
