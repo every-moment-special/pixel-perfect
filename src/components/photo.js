@@ -1,4 +1,4 @@
-const { element } = require('../modules/shadow-tree/vdom');
+const { element } = require('../modules/shadow-tree/shadowTree');
 const { terminal, isKitty } = require('../utils/helper');
 const { state } = require('../core/state');
 

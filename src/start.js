@@ -1,7 +1,7 @@
 const { exec } = require('child_process');
 const { setTerminalFontSize, isKitty, readDirectory, cleanupImageCache } = require('./utils/helper.js');
 const Interface = require('./components/interface.js');
-const { render } = require('./modules/shadow-tree/vdom.js');
+const { render } = require('./modules/shadow-tree/shadowTree.js');
 const { event } = require('./utils/helper.js');
 const { state } = require('./core/state.js');
 const path = require('path');
