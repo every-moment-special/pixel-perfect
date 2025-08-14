@@ -446,6 +446,7 @@ async function shutdown() {
   }
 }
 
+event.on('key:q', shutdown);  // q to quit
 process.on('SIGINT', shutdown);   // Ctrl+C
 process.on('SIGTERM', shutdown);  // kill
 process.on('uncaughtException', err => {
