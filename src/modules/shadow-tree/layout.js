@@ -42,7 +42,8 @@ const measureText = (node, style) => {
   const text = extractText(node);
 
   if (style.pixelFont) {
-    const { cellCols, cellRows } = measurePixelFont(text, scale);
+    const fontFamily = style.fontFamily || 'full';
+    const { cellCols, cellRows } = measurePixelFont(text, scale, fontFamily);
     const width = style.width != null ? style.width : cellCols;
     const height = style.height != null ? style.height : cellRows;
     return { width, height };

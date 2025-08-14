@@ -311,7 +311,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
 
     // Pixel font rendering path (3x5 bitmap per glyph), enabled via style.pixelFont
     if (style.pixelFont) {
-      const { cellCols, cellRows, grid } = rasterizePixelFontCached(text, scale);
+      const fontFamily = style.fontFamily || 'full';
+      const { cellCols, cellRows, grid } = rasterizePixelFontCached(text, scale, fontFamily);
       const width = frame.width;
       const height = frame.height;
 

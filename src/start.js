@@ -4,9 +4,17 @@ const Interface = require('./components/interface.js');
 const { render } = require('./modules/shadow-tree/shadowTree.js');
 const { event } = require('./utils/helper.js');
 const { state } = require('./core/state.js');
+const { setFontMode, FONT_MODE } = require('./modules/pixel-font/pixelFont.js');
 const path = require('path');
 
 async function main() {
+  // Check for compact font mode via environment variable or command line
+  const useCompactFont = process.env.COMPACT_FONT === 'true' || process.argv.includes('--compact-font');
+  if (useCompactFont) {
+    setFontMode(FONT_MODE.COMPACT);
+    console.log('Using compact font mode (3x5 glyphs)');
+  }
+
   // if (isKitty) {
   //   await setTerminalFontSize(1);
   // }

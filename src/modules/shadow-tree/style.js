@@ -33,6 +33,7 @@
  * @property {'top'|'middle'|'bottom'} verticalAlign
  * @property {number} fontSize // integer >= 1
  * @property {boolean} pixelFont
+ * @property {'full'|'compact'} fontFamily // 'full' for 8x8 glyphs, 'compact' for 3x5 glyphs
  * @property {NormalizedBorder} border
  * @property {number} zIndex // integer; higher paints on top among siblings
  * @property {'static'|'fixed'} position
@@ -84,6 +85,7 @@ const baseDefaults = Object.freeze({
   verticalAlign: 'top',
   fontSize: 1,
   pixelFont: false,
+  fontFamily: 'full',
   border: { width: 0, color: 'white', style: 'quarter' },
   zIndex: 0,
   position: 'static',
@@ -177,6 +179,7 @@ function normalizeStyle(type, rawStyle) {
   const verticalAlign = oneOf(s.verticalAlign, ['top', 'middle', 'bottom'], d.verticalAlign);
   const fontSize = Math.max(1, coerceInteger(s.fontSize, d.fontSize));
   const pixelFont = coerceBoolean(s.pixelFont, d.pixelFont);
+  const fontFamily = oneOf(s.fontFamily, ['full', 'compact'], d.fontFamily || 'full');
   const zIndex = coerceInteger(s.zIndex, d.zIndex || 0);
   const position = oneOf(s.position, ['static', 'fixed'], d.position || 'static');
 
@@ -209,6 +212,7 @@ function normalizeStyle(type, rawStyle) {
     verticalAlign,
     fontSize,
     pixelFont,
+    fontFamily,
     border,
     zIndex,
     position,

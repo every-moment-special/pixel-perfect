@@ -24,6 +24,7 @@ const colors = {
     red: '\x1b[31m',
     blue: '\x1b[34m',
     cyan: '\x1b[36m',
+    pink: '\x1b[35m',
     bgblack: '\x1b[40m',
     bgpink: '\x1b[105m',
     bggray: '\x1b[100m',
@@ -91,19 +92,19 @@ const readDirectory = (currentPath) => {
     }
 }
 
-const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1) => {
+const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1, fontFamily = 'full') => {
     const ext = path.extname(filename);
     const base = ext ? filename.slice(0, -ext.length) : filename;
   
     // Fits as-is
-    if (measurePixelFont(filename, scale).cellCols <= maxCellWidth) return filename;
+    if (measurePixelFont(filename, scale, fontFamily).cellCols <= maxCellWidth) return filename;
   
     const ellipsis = '';
   
     // If even ellipsis + ext does not fit, try trimming ext from the left; fallback to ellipsis only
-    if (measurePixelFont(ellipsis + ext, scale).cellCols > maxCellWidth) {
+    if (measurePixelFont(ellipsis + ext, scale, fontFamily).cellCols > maxCellWidth) {
       let shortExt = ext;
-      while (shortExt.length > 0 && measurePixelFont(ellipsis + shortExt, scale).cellCols > maxCellWidth) {
+      while (shortExt.length > 0 && measurePixelFont(ellipsis + shortExt, scale, fontFamily).cellCols > maxCellWidth) {
         shortExt = shortExt.slice(1);
       }
       return shortExt.length > 0 ? ellipsis + shortExt : ellipsis;
@@ -116,7 +117,7 @@ const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1) => {
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
       const candidate = base.slice(0, mid) + ellipsis + ext;
-      const width = measurePixelFont(candidate, scale).cellCols;
+      const width = measurePixelFont(candidate, scale, fontFamily).cellCols;
       if (width <= maxCellWidth) {
         best = candidate;
         left = mid + 1;
