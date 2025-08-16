@@ -1,10 +1,11 @@
 const path = require('path');
+const { currentPath } = require('../utils/helper');
 
 const state = {
   scrollX: 0,
   scrollY: 0,
   selectedIndex: 0,
-  currentPath: path.resolve(process.cwd()),
+  currentPath: currentPath,
   view: 'grid',
   photoPath: null,
   mediaIndex: 0,

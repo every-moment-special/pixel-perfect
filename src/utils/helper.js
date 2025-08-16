@@ -16,32 +16,37 @@ const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
 const currentPath = process.cwd();
-
-// #7afeb2
-// 
+// const currentPath = path.join(__dirname, '..', '..', 'resources');
 
 const colors = {
-    black: '\x1b[30m',
-    gray: '\x1b[90m',
-    white: '\x1b[37m',
-    red: '\x1b[31m',
-    blue: '\x1b[34m',
-    cyan: '\x1b[36m',
-    pink: '\x1b[35m',
-    bgpink: '\x1b[105m',
-    bggray: '\x1b[100m',
-    bgwhite: '\x1b[47m',
-    bgred: '\x1b[41m',
-    bgblue: '\x1b[44m',
-    bgcyan: '\x1b[46m',
+    black: '\x1b[38;2;0;0;0m',
+    gray: '\x1b[38;2;128;128;128m',
+    coolGray: '\x1b[38;2;139;148;163m',
+    silver: '\x1b[38;2;220;220;220m',
+    silverDark: '\x1b[38;2;169;169;169m',
+    silverLight: '\x1b[38;2;240;240;240m',
+    silverWarm: '\x1b[38;2;211;211;211m',
+    silverCool: '\x1b[38;2;176;196;222m',
+    red: '\x1b[38;2;255;0;0m',
+    blue: '\x1b[38;2;0;0;255m',
+    cyan: '\x1b[38;2;0;255;255m',
+    pink: '\x1b[38;2;255;192;203m',
+    bgpink: '\x1b[48;2;255;192;203m',
+    bggray: '\x1b[48;2;128;128;128m',
+    bgwhite: '\x1b[48;2;255;255;255m',
+    bgred: '\x1b[48;2;255;0;0m',
+    bgblue: '\x1b[48;2;0;0;255m',
+    bgcyan: '\x1b[48;2;0;255;255m',
     reset: '\x1b[0m',
     bgReset: '\x1b[49m',
     transparent: '\x1b[39m',
     bgTransparent: '\x1b[49m',
 
     neonGreen: '\x1b[38;2;122;254;178m',
-    bgNeonGreen: '\x1b[48;2;122;254;178m',
+    bgneonGreen: '\x1b[48;2;122;254;178m',
+    bgcoolGray: '\x1b[48;2;139;148;163m',
     bgblack: '\x1b[48;2;0;0;0m',
+    white: '\x1b[38;2;255;255;255m',
 };
 
 const generator = new Generator();

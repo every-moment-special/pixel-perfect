@@ -23,43 +23,25 @@ const Panel = (style = {}, content = []) => {
 
   style = {
     x: 0,
-    // y: 0,
-    y: 0,
+    y: terminal.height - 6,
     width: terminal.width,
-    height: 10,
+    height: 6,
     backgroundColor: 'black',
     zIndex: 10,
     position: 'fixed',
   };
 
   return [
-    element('div', style, [
-      element('text', {
-          width: terminal.width,
-          height: 10,
-          textAlign: 'center',
-          verticalAlign: 'middle',
-          fontSize: 1,
-          pixelFont: true,
-          fontFamily: 'full',
-          backgroundColor: 'black',
-          color: 'neonGreen',
-          zIndex: 2,
-        },
-        `${(state.currentPath || '').split('/').pop()}`
-      ),
-    ]),
-
     element('div', {
         width: terminal.width,
-        height: terminal.height - 10 - 2,
-        y: 10 + 2,
+        height: terminal.height - 6 - 4,
+        y: 4,
         textAlign: 'left',
         verticalAlign: 'top',
         fontSize: 1,
         pixelFont: true,
         display: 'grid',
-        gap: 10,
+        gap: 16,
         backgroundColor: 'black',
         overflow: 'auto',
         scrollbarWidth: 1,
@@ -74,27 +56,10 @@ const Panel = (style = {}, content = []) => {
             return element('div', { 
               display: 'flex', 
               flexDirection: 'column', 
-              gap: 1, 
               backgroundColor: 'black', 
               overflow: 'hidden', 
               zIndex: 0,
             }, [
-              element(
-                'text',
-                {
-                  width: 64,
-                  textAlign: 'center',
-                  verticalAlign: 'bottom',
-                  fontSize: 1,
-                  pixelFont: true,
-                  fontFamily: 'compact',
-                  backgroundColor: 'black',
-                  zIndex: 0,
-                  color: isSelected ? 'white' : 'gray',
-                },
-                truncateFilenameKeepExtension(item.name, 64, 1, 'compact')
-              ),
-
               element(
                 'img',
                 { 
@@ -110,6 +75,23 @@ const Panel = (style = {}, content = []) => {
                 },
                 path.join(__dirname, '..', 'assets', 'dir.svg')
               ),
+
+              element(
+                'text',
+                {
+                  width: 64,
+                  height: 7,
+                  textAlign: 'center',
+                  verticalAlign: 'middle',
+                  fontSize: 1,
+                  pixelFont: true,
+                  fontFamily: 'compact',
+                  backgroundColor: 'black',
+                  zIndex: 0,
+                  color: isSelected ? 'white' : 'coolGray',
+                },
+                truncateFilenameKeepExtension(item.name, 64, 1, 'compact')
+              ),
             ]);
           }
 
@@ -117,27 +99,10 @@ const Panel = (style = {}, content = []) => {
             return element('div', {
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 1,
                 backgroundColor: 'transparent',
                 overflow: 'hidden',
                 zIndex: 0,
               }, [
-                element(
-                  'text',
-                  {
-                    width: 64,
-                    textAlign: 'center',
-                    verticalAlign: 'bottom',
-                    fontSize: 1,
-                    pixelFont: true,
-                    fontFamily: 'compact',
-                    backgroundColor: 'transparent',
-                    zIndex: 0,
-                    color: isSelected ? 'white' : 'gray',
-                  },
-                  truncateFilenameKeepExtension(item.name, 64, 1, 'compact')
-                ),
-                
                 element(
                   'img',
                   { 
@@ -153,11 +118,58 @@ const Panel = (style = {}, content = []) => {
                   },
                   item.path
                 ),
+
+                element(
+                  'text',
+                  {
+                    width: 64,
+                    height: 7,
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    fontSize: 1,
+                    pixelFont: true,
+                    fontFamily: 'compact',
+                    backgroundColor: 'black',
+                    zIndex: 0,
+                    color: isSelected ? 'white' : 'coolGray',
+                  },
+                  truncateFilenameKeepExtension(item.name, 62, 1, 'compact')
+                ),
             ]);
           }
         }),
       ]
     ),
+
+    element('div', style, [
+      element('text', {
+          width: terminal.width / 2,
+          height: 6,
+          textAlign: 'left',
+          verticalAlign: 'middle',
+          fontSize: 1,
+          pixelFont: true,
+          fontFamily: 'full',
+          backgroundColor: 'black',
+          color: 'white',
+          zIndex: 2,
+        },
+        `Directory: ${(state.currentPath || '').split('/').pop()}`
+      ),
+      element('text', {
+        width: terminal.width / 2,
+        height: 6,
+        x: terminal.width / 2,
+        textAlign: 'right',
+        verticalAlign: 'middle',
+        fontSize: 1,
+        pixelFont: true,
+        fontFamily: 'full',
+        backgroundColor: 'black',
+        color: 'white',
+        zIndex: 4,
+      }, `Selected: ${state.selectedIndex + 1}`),
+    ]),
   ];
 }
 
