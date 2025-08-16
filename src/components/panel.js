@@ -23,9 +23,9 @@ const Panel = (style = {}, content = []) => {
 
   style = {
     x: 0,
-    y: terminal.height - 6,
+    y: terminal.height - 7,
     width: terminal.width,
-    height: 6,
+    height: 7,
     backgroundColor: 'black',
     zIndex: 10,
     position: 'fixed',
@@ -34,7 +34,7 @@ const Panel = (style = {}, content = []) => {
   return [
     element('div', {
         width: terminal.width,
-        height: terminal.height - 6 - 4,
+        height: terminal.height - 7 - 4,
         y: 4,
         textAlign: 'left',
         verticalAlign: 'top',
@@ -99,7 +99,7 @@ const Panel = (style = {}, content = []) => {
             return element('div', {
                 display: 'flex',
                 flexDirection: 'column',
-                backgroundColor: 'transparent',
+                backgroundColor: 'black',
                 overflow: 'hidden',
                 zIndex: 0,
               }, [
@@ -112,7 +112,7 @@ const Panel = (style = {}, content = []) => {
                     verticalAlign: 'top',
                     fontSize: 2,
                     pixelFont: true,
-                    backgroundColor: 'transparent',
+                    backgroundColor: 'black',
                     overflow: 'hidden',
                     zIndex: 0,
                   },
@@ -144,7 +144,7 @@ const Panel = (style = {}, content = []) => {
     element('div', style, [
       element('text', {
           width: terminal.width / 2 - 4,
-          height: 6,
+          height: 7,
           x: 4,
           textAlign: 'left',
           verticalAlign: 'middle',
@@ -159,7 +159,7 @@ const Panel = (style = {}, content = []) => {
       ),
       element('text', {
         width: terminal.width / 2 - 4,
-        height: 6,
+        height: 7,
         x: terminal.width / 2 - 4,
         textAlign: 'right',
         verticalAlign: 'middle',
@@ -169,7 +169,7 @@ const Panel = (style = {}, content = []) => {
         backgroundColor: 'black',
         color: 'white',
         zIndex: 4,
-      }, `Selected: ${state.selectedIndex + 1}/${itemCount}`),
+      }, `Selected: ${state.selectedIndex + 1}/${items.length}`),
     ]),
   ];
 }
