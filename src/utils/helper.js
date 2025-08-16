@@ -17,6 +17,9 @@ const isKitty = !!process.env.KITTY_WINDOW_ID;
 
 const currentPath = process.cwd();
 
+// #7afeb2
+// 
+
 const colors = {
     black: '\x1b[30m',
     gray: '\x1b[90m',
@@ -25,7 +28,6 @@ const colors = {
     blue: '\x1b[34m',
     cyan: '\x1b[36m',
     pink: '\x1b[35m',
-    bgblack: '\x1b[40m',
     bgpink: '\x1b[105m',
     bggray: '\x1b[100m',
     bgwhite: '\x1b[47m',
@@ -36,6 +38,10 @@ const colors = {
     bgReset: '\x1b[49m',
     transparent: '\x1b[39m',
     bgTransparent: '\x1b[49m',
+
+    neonGreen: '\x1b[38;2;122;254;178m',
+    bgNeonGreen: '\x1b[48;2;122;254;178m',
+    bgblack: '\x1b[48;2;0;0;0m',
 };
 
 const generator = new Generator();

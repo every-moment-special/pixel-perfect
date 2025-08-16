@@ -27,7 +27,7 @@ const Panel = (style = {}, content = []) => {
     y: 0,
     width: terminal.width,
     height: 10,
-    backgroundColor: 'transparent',
+    backgroundColor: 'black',
     zIndex: 10,
     position: 'fixed',
   };
@@ -42,42 +42,12 @@ const Panel = (style = {}, content = []) => {
           fontSize: 1,
           pixelFont: true,
           fontFamily: 'full',
-          backgroundColor: 'transparent',
-          color: 'white',
+          backgroundColor: 'black',
+          color: 'neonGreen',
           zIndex: 2,
         },
         `${(state.currentPath || '').split('/').pop()}`
       ),
-      // element('text', {
-      //     // width: terminal.width,
-      //     y: 10,
-      //     height: 10,
-      //     textAlign: 'left',
-      //     verticalAlign: 'middle',
-      //     fontSize: 1,
-      //     pixelFont: true,
-      //     fontFamily: 'compact',
-      //     backgroundColor: 'transparent',
-      //     color: 'cyan',
-      //     zIndex: 2,
-      //   },
-      //   `Selected: ${selected+1} of ${itemCount}`
-      // ),
-      // element('text', {
-      //     width: terminal.width,
-      //     y: 10,
-      //     height: 10,
-      //     textAlign: 'right',
-      //     verticalAlign: 'middle',
-      //     fontSize: 1,
-      //     pixelFont: true,
-      //     fontFamily: 'compact',
-      //     backgroundColor: 'transparent',
-      //     color: 'cyan',
-      //     zIndex: 1,
-      //   },
-      //   `Size: ${terminal.width}x${terminal.height * 2}`
-      // )
     ]),
 
     element('div', {
@@ -90,7 +60,7 @@ const Panel = (style = {}, content = []) => {
         pixelFont: true,
         display: 'grid',
         gap: 10,
-        backgroundColor: 'transparent', 
+        backgroundColor: 'black',
         overflow: 'auto',
         scrollbarWidth: 1,
         scrollY: state.scrollY || 0,
@@ -105,24 +75,20 @@ const Panel = (style = {}, content = []) => {
               display: 'flex', 
               flexDirection: 'column', 
               gap: 1, 
-              backgroundColor: 'transparent', 
+              backgroundColor: 'black', 
               overflow: 'hidden', 
               zIndex: 0,
-              // borderRadius: 2,
-              // border: { width: 1, color: 'red', style: 'box' }
             }, [
               element(
                 'text',
                 {
-                  // x: (index * 64) + (index * 5),
                   width: 64,
-                  // y: 2 + 32 + 1,
                   textAlign: 'center',
                   verticalAlign: 'bottom',
                   fontSize: 1,
                   pixelFont: true,
                   fontFamily: 'compact',
-                  backgroundColor: 'transparent',
+                  backgroundColor: 'black',
                   zIndex: 0,
                   color: isSelected ? 'white' : 'gray',
                 },
@@ -132,15 +98,13 @@ const Panel = (style = {}, content = []) => {
               element(
                 'img',
                 { 
-                  // x: (index * 64) + (index * 5),
                   width: 64,
-                  // y: 2,
                   height: 32,
                   textAlign: 'left',
                   verticalAlign: 'top',
                   fontSize: 2,
                   pixelFont: true,
-                  backgroundColor: 'transparent',
+                  backgroundColor: 'black',
                   overflow: 'hidden',
                   zIndex: 0,
                 },
@@ -157,15 +121,11 @@ const Panel = (style = {}, content = []) => {
                 backgroundColor: 'transparent',
                 overflow: 'hidden',
                 zIndex: 0,
-                // borderRadius: 1,
-                // border: { width: 1, color: 'red', style: 'box' }
               }, [
                 element(
                   'text',
                   {
-                    // x: (index * 64) + (index * 5),
                     width: 64,
-                    // y: 2 + 32 + 1,
                     textAlign: 'center',
                     verticalAlign: 'bottom',
                     fontSize: 1,
@@ -181,9 +141,7 @@ const Panel = (style = {}, content = []) => {
                 element(
                   'img',
                   { 
-                    // x: (index * 64) + (index * 5),
                     width: 64,
-                    // y: 2,
                     height: 32,
                     textAlign: 'left',
                     verticalAlign: 'top',
