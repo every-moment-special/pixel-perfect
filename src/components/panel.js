@@ -143,13 +143,14 @@ const Panel = (style = {}, content = []) => {
 
     element('div', style, [
       element('text', {
-          width: terminal.width / 2,
+          width: terminal.width / 2 - 4,
           height: 6,
+          x: 4,
           textAlign: 'left',
           verticalAlign: 'middle',
           fontSize: 1,
           pixelFont: true,
-          fontFamily: 'full',
+          fontFamily: 'compact',
           backgroundColor: 'black',
           color: 'white',
           zIndex: 2,
@@ -157,18 +158,18 @@ const Panel = (style = {}, content = []) => {
         `Directory: ${(state.currentPath || '').split('/').pop()}`
       ),
       element('text', {
-        width: terminal.width / 2,
+        width: terminal.width / 2 - 4,
         height: 6,
-        x: terminal.width / 2,
+        x: terminal.width / 2 - 4,
         textAlign: 'right',
         verticalAlign: 'middle',
         fontSize: 1,
         pixelFont: true,
-        fontFamily: 'full',
+        fontFamily: 'compact',
         backgroundColor: 'black',
         color: 'white',
         zIndex: 4,
-      }, `Selected: ${state.selectedIndex + 1}`),
+      }, `Selected: ${state.selectedIndex + 1}/${itemCount}`),
     ]),
   ];
 }

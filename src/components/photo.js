@@ -13,9 +13,22 @@ const Photo = (imagePath) => {
       backgroundColor: 'black',
       zIndex: 0,
     }, [
+      element('img', {
+        width: terminal.width,
+        height: terminal.height - 7,
+        textAlign: 'left',
+        verticalAlign: 'top',
+        fontSize: 2,
+        pixelFont: true,
+        backgroundColor: 'black',
+        overflow: 'hidden',
+        zIndex: 0,
+      }, imagePath),
+
       element('text', {
         width: terminal.width,
         height: 7,
+        y: terminal.height - 7,
         textAlign: 'center',
         verticalAlign: 'middle',
         fontSize: 1,
@@ -27,19 +40,6 @@ const Photo = (imagePath) => {
         overflowY: 'hidden',
         zIndex: 0,
       }, truncateFilenameKeepExtension(imagePath.split('/').pop(), terminal.width - 2, 1, 'compact')),
-
-      element('img', {
-        width: terminal.width,
-        height: terminal.height - 7,
-        y: 7,
-        textAlign: 'left',
-        verticalAlign: 'top',
-        fontSize: 2,
-        pixelFont: true,
-        backgroundColor: 'black',
-        overflow: 'hidden',
-        zIndex: 0,
-      }, imagePath)
     ])
   ];
 
