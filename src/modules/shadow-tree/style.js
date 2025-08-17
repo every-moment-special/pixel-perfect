@@ -181,7 +181,7 @@ function normalizeStyle(type, rawStyle) {
   const pixelFont = coerceBoolean(s.pixelFont, d.pixelFont);
   const fontFamily = oneOf(s.fontFamily, ['full', 'compact'], d.fontFamily || 'full');
   const zIndex = coerceInteger(s.zIndex, d.zIndex || 0);
-  const position = oneOf(s.position, ['static', 'fixed'], d.position || 'static');
+  const position = oneOf(s.position, ['static', 'fixed', 'absolute'], d.position || 'static');
 
   // Border
   const border = normalizeBorder(type, s, d);

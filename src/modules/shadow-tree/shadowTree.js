@@ -331,19 +331,21 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         else if (verticalAlign === 'bottom') startRow = emptyLines;
       }
 
-      // Fill background
-      for (let h = 0; h < height; h++) {
-        for (let w = 0; w < width; w++) {
-          const cx = x + w;
-          const cy = y + h;
-          if (clipRect) {
-            if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+      // Fill background (skip if transparent)
+      if (bgColor !== 'transparent') {
+        for (let h = 0; h < height; h++) {
+          for (let w = 0; w < width; w++) {
+            const cx = x + w;
+            const cy = y + h;
+            if (clipRect) {
+              if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+            }
+            if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
+            buffer[cy][cx].char = ' ';
+            buffer[cy][cx].fgColor = fgColor;
+            buffer[cy][cx].bgColor = bgColor;
+            buffer[cy][cx].raw = null; // ensure we draw over any prior raw (e.g., img)
           }
-          if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
-          buffer[cy][cx].char = ' ';
-          buffer[cy][cx].fgColor = fgColor;
-          buffer[cy][cx].bgColor = bgColor;
-          buffer[cy][cx].raw = null; // ensure we draw over any prior raw (e.g., img)
         }
       }
 
@@ -423,16 +425,27 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           const withinVerticalBand = h >= startRow && h < startRow + bandHeight;
           if (withinVerticalBand) {
             if (w < leftPadding || w >= leftPadding + scaledTextLength) {
-              buffer[cy][cx].char = ' ';
+              // Only set background if not transparent
+              if (bgColor !== 'transparent') {
+                buffer[cy][cx].char = ' ';
+                buffer[cy][cx].bgColor = bgColor;
+              }
             } else {
               const originalIndex = Math.floor((w - leftPadding) / scale);
               buffer[cy][cx].char = text[originalIndex] || ' ';
+              buffer[cy][cx].fgColor = fgColor;
+              // Only set background if not transparent
+              if (bgColor !== 'transparent') {
+                buffer[cy][cx].bgColor = bgColor;
+              }
             }
           } else {
-            buffer[cy][cx].char = ' ';
+            // Only set background if not transparent
+            if (bgColor !== 'transparent') {
+              buffer[cy][cx].char = ' ';
+              buffer[cy][cx].bgColor = bgColor;
+            }
           }
-          buffer[cy][cx].fgColor = fgColor;
-          buffer[cy][cx].bgColor = bgColor;
           buffer[cy][cx].raw = null;
         }
       }
@@ -466,18 +479,20 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     const height = frame.height;
     const bgColor = style.backgroundColor;
 
-    // Fill the entire image area with background color first
-    for (let row = y; row < y + height; row++) {
-      if (row < 0 || row >= buffer.length) continue;
-      for (let col = x; col < x + width; col++) {
-        if (clipRect) {
-          if (col < clipRect.x || col >= clipRect.x + clipRect.width || row < clipRect.y || row >= clipRect.y + clipRect.height) continue;
+    // Fill the entire image area with background color first (skip if transparent)
+    if (bgColor !== 'transparent') {
+      for (let row = y; row < y + height; row++) {
+        if (row < 0 || row >= buffer.length) continue;
+        for (let col = x; col < x + width; col++) {
+          if (clipRect) {
+            if (col < clipRect.x || col >= clipRect.x + clipRect.width || row < clipRect.y || row >= clipRect.y + clipRect.height) continue;
+          }
+          if (col < 0 || col >= buffer[0].length) continue;
+          buffer[row][col].char = ' ';
+          buffer[row][col].bgColor = bgColor;
+          buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
+          buffer[row][col].raw = null;
         }
-        if (col < 0 || col >= buffer[0].length) continue;
-        buffer[row][col].char = ' ';
-        buffer[row][col].bgColor = bgColor;
-        buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
-        buffer[row][col].raw = null;
       }
     }
 
@@ -528,17 +543,20 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     // establish clip rect if overflow is hidden or auto (scroll area)
     const childClip = (style.overflow === 'hidden' || style.overflow === 'auto') ? { x, y, width, height } : clipRect;
 
-    for (let row = y; row < y + height; row++) {
-      if (row < 0 || row >= buffer.length) continue;
-      for (let col = x; col < x + width; col++) {
-        if (childClip) {
-          if (col < childClip.x || col >= childClip.x + childClip.width || row < childClip.y || row >= childClip.y + childClip.height) continue;
+    // Only fill background if not transparent
+    if (bgColor !== 'transparent') {
+      for (let row = y; row < y + height; row++) {
+        if (row < 0 || row >= buffer.length) continue;
+        for (let col = x; col < x + width; col++) {
+          if (childClip) {
+            if (col < childClip.x || col >= childClip.x + childClip.width || row < childClip.y || row >= childClip.y + childClip.height) continue;
+          }
+          if (col < 0 || col >= buffer[0].length) continue;
+          buffer[row][col].char = ' ';
+          buffer[row][col].bgColor = bgColor;
+          buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
+          buffer[row][col].raw = null;
         }
-        if (col < 0 || col >= buffer[0].length) continue;
-        buffer[row][col].char = ' ';
-        buffer[row][col].bgColor = bgColor;
-        buffer[row][col].fgColor = buffer[row][col].fgColor || 'transparent';
-        buffer[row][col].raw = null;
       }
     }
 

@@ -315,25 +315,27 @@ function rasterizePixelFont(text, scale, fontFamily = 'full') {
 
     // Emit into half-block grid with scaling
     if (fontFamily === FONT_MODE.COMPACT) {
-      // Optimized rendering for compact fonts: 3x5 pixels → 3x3 cells
-      // Map 5 pixel rows to 3 cell rows using half-blocks
-      const pixelToCellMap = [
-        [0, 0], // pixel row 0 → cell row 0, top half
-        [0, 1], // pixel row 1 → cell row 0, bottom half  
-        [1, 0], // pixel row 2 → cell row 1, top half
-        [1, 1], // pixel row 3 → cell row 1, bottom half
-        [2, 0]  // pixel row 4 → cell row 2, top half
-      ];
+      // Optimized rendering for compact fonts: 3x5 pixels → scaled cells
+      // Each cell can hold 2 vertical pixels via half-blocks
       
       for (let ty = 0; ty < glyphHeight; ty++) {
         for (let tx = 0; tx < glyphWidth; tx++) {
           if (!bmp[ty][tx]) continue;
-          const [cellY, halfBlock] = pixelToCellMap[ty];
-          for (let sx = 0; sx < scale; sx++) {
-            const px = penPxX + tx * scale + sx;
-            const cellX = px;
-            if (cellX < 0 || cellX >= cellCols || cellY < 0 || cellY >= cellRows) continue;
-            grid[cellY][cellX] |= (halfBlock === 0) ? 1 : 2; // 1 for top, 2 for bottom
+          
+          // Apply vertical scaling - each pixel row gets scaled
+          for (let sy = 0; sy < scale; sy++) {
+            const py = ty * scale + sy;
+            const cellY = Math.floor(py / 2); // 2 pixels per cell
+            if (cellY < 0 || cellY >= cellRows) continue;
+            const isTop = (py % 2 === 0); // Check if it's top or bottom half
+            
+            // Apply horizontal scaling
+            for (let sx = 0; sx < scale; sx++) {
+              const px = penPxX + tx * scale + sx;
+              const cellX = px;
+              if (cellX < 0 || cellX >= cellCols) continue;
+              grid[cellY][cellX] |= isTop ? 1 : 2; // 1 for top, 2 for bottom
+            }
           }
         }
       }

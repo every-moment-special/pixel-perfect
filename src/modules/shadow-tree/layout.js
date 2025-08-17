@@ -108,11 +108,15 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     const gap = Math.max(0, Number(style.gap) || 0);
     if ((style.display || 'block') === 'flex') {
       const isRow = (style.flexDirection || 'row') === 'row';
-      const totalW = laidOutChildren.reduce((s, ch) => s + ((ch && ch.frame && ch.frame.width) || 0), 0);
-      const totalH = laidOutChildren.reduce((s, ch) => s + ((ch && ch.frame && ch.frame.height) || 0), 0);
-      const maxW = laidOutChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame && ch.frame.width) || 0)), 0);
-      const maxH = laidOutChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame && ch.frame.height) || 0)), 0);
-      const fixedGaps = Math.max(0, laidOutChildren.length - 1) * gap;
+      // Filter out absolutely positioned children for sizing calculations
+      const nonAbsoluteChildren = laidOutChildren.filter(ch => 
+        !(ch && ch.computedStyle && ch.computedStyle.position === 'absolute')
+      );
+      const totalW = nonAbsoluteChildren.reduce((s, ch) => s + ((ch && ch.frame && ch.frame.width) || 0), 0);
+      const totalH = nonAbsoluteChildren.reduce((s, ch) => s + ((ch && ch.frame && ch.frame.height) || 0), 0);
+      const maxW = nonAbsoluteChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame && ch.frame.width) || 0)), 0);
+      const maxH = nonAbsoluteChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame && ch.frame.height) || 0)), 0);
+      const fixedGaps = Math.max(0, nonAbsoluteChildren.length - 1) * gap;
       measuredWidth = hasExplicitWidth
         ? style.width
         : (isRow ? (totalW + fixedGaps) : maxW);
@@ -121,13 +125,17 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
         : (isRow ? maxH : (totalH + fixedGaps));
     } else {
       // Auto-size to children bounding box if not explicitly sized
-      const rightMost = laidOutChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame) ? (ch.frame.x + ch.frame.width) : absX)), absX);
-      const bottomMost = laidOutChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame) ? (ch.frame.y + ch.frame.height) : absY)), absY);
+      // Filter out absolutely positioned children for sizing calculations
+      const nonAbsoluteChildren = laidOutChildren.filter(ch => 
+        !(ch && ch.computedStyle && ch.computedStyle.position === 'absolute')
+      );
+      const rightMost = nonAbsoluteChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame) ? (ch.frame.x + ch.frame.width) : absX)), absX);
+      const bottomMost = nonAbsoluteChildren.reduce((m, ch) => Math.max(m, ((ch && ch.frame) ? (ch.frame.y + ch.frame.height) : absY)), absY);
       measuredWidth = hasExplicitWidth ? style.width : Math.max(0, rightMost - absX);
       measuredHeight = hasExplicitHeight ? style.height : Math.max(0, bottomMost - absY);
       // Fallback to terminal if still zero and no children
-      if (!hasExplicitWidth && measuredWidth === 0 && laidOutChildren.length === 0) measuredWidth = terminal.width;
-      if (!hasExplicitHeight && measuredHeight === 0 && laidOutChildren.length === 0) measuredHeight = terminal.height;
+      if (!hasExplicitWidth && measuredWidth === 0 && nonAbsoluteChildren.length === 0) measuredWidth = terminal.width;
+      if (!hasExplicitHeight && measuredHeight === 0 && nonAbsoluteChildren.length === 0) measuredHeight = terminal.height;
     }
   } else {
     measuredWidth = style.width != null ? style.width : 0;
@@ -174,6 +182,11 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
 
     let cursor = start;
     laidOutChildren = laidOutChildren.map((ch) => {
+      // Skip flex positioning for absolutely positioned children
+      if (ch && ch.computedStyle && ch.computedStyle.position === 'absolute') {
+        return ch; // Keep absolute positioned elements as-is
+      }
+      
       const w = (ch && ch.frame && ch.frame.width) || 0;
       const h = (ch && ch.frame && ch.frame.height) || 0;
       const targetX = isRow ? cursor : ch.frame.x;
@@ -207,6 +220,11 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
     };
 
     for (const ch of laidOutChildren) {
+      // Skip grid positioning for absolutely positioned children
+      if (ch && ch.computedStyle && ch.computedStyle.position === 'absolute') {
+        continue; // Skip absolutely positioned elements in grid layout
+      }
+      
       const chWidth = (ch && ch.frame && ch.frame.width) || 0;
       const chHeight = (ch && ch.frame && ch.frame.height) || 0;
 
@@ -266,7 +284,11 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
       cursorY += row.rowHeight + Math.floor(gap / 2); // vertical gap is half
     }
 
-    laidOutChildren = placed;
+    // Add back absolutely positioned elements that were skipped during grid layout
+    const absoluteElements = laidOutChildren.filter(ch => 
+      ch && ch.computedStyle && ch.computedStyle.position === 'absolute'
+    );
+    laidOutChildren = [...placed, ...absoluteElements];
 
     // Attach grid row metadata on node for smarter scrolling
     node = {

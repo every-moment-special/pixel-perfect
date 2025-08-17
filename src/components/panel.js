@@ -22,8 +22,8 @@ const Panel = (style = {}, content = []) => {
     : 0;
 
   style = {
-    x: 0,
-    y: terminal.height - 7,
+    x: style.x !== undefined ? style.x : 0,
+    y: style.y !== undefined ? style.y : terminal.height - 7,
     width: terminal.width,
     height: 7,
     backgroundColor: 'black',
@@ -51,8 +51,11 @@ const Panel = (style = {}, content = []) => {
       }, [
         mediaItems.map((item, index) => {
           const isSelected = selected === index;
-
+          
           if (item.type === 'directory') {
+            const dirItems = readDirectory(state.currentPath + '/' + item.name);
+            const dirItemCount = dirItems.length > 0 ? dirItems.length : 0;
+            
             return element('div', { 
               display: 'flex', 
               flexDirection: 'column', 
@@ -60,20 +63,43 @@ const Panel = (style = {}, content = []) => {
               overflow: 'hidden', 
               zIndex: 0,
             }, [
+              // element(
+              //   'img',
+              //   { 
+              //     width: 64,
+              //     height: 32,
+              //     textAlign: 'left',
+              //     verticalAlign: 'top',
+              //     fontSize: 2,
+              //     pixelFont: true,
+              //     backgroundColor: 'black',
+              //     overflow: 'hidden',
+              //     zIndex: 0,
+              //   },
+              //   path.join(__dirname, '..', 'assets', 'dir.svg')
+              // ),
               element(
-                'img',
-                { 
+                'text',
+                {
                   width: 64,
                   height: 32,
-                  textAlign: 'left',
-                  verticalAlign: 'top',
-                  fontSize: 2,
+                  y: 0,
+                  textAlign: 'center',
+                  verticalAlign: 'middle',
+                  fontSize: 5,
                   pixelFont: true,
-                  backgroundColor: 'black',
-                  overflow: 'hidden',
-                  zIndex: 0,
+                  fontFamily: 'compact',
+                  backgroundColor: 'transparent',
+                  zIndex: 10,
+                  color: isSelected ? 'white' : 'coolGray',
+                  // position: 'absolute',
+                  border: {
+                    width: 1,
+                    color: 'white',
+                    style: 'box',
+                  },
                 },
-                path.join(__dirname, '..', 'assets', 'dir.svg')
+                dirItemCount
               ),
 
               element(
@@ -169,7 +195,7 @@ const Panel = (style = {}, content = []) => {
         backgroundColor: 'black',
         color: 'white',
         zIndex: 4,
-      }, `Selected: ${state.selectedIndex + 1}/${items.length}`),
+      }, `Selected: ${itemCount > 0 ? state.selectedIndex + 1 : 0}/${itemCount}`),
     ]),
   ];
 }
