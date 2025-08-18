@@ -1,10 +1,10 @@
-const { terminal, colors, generate, getCachedOrGenerateImage } = require('../../utils/helper.js');
-const { GifPlayer } = require('../../utils/gifPlayer.js');
+const { terminal, colors, getCachedOrGenerateImage } = require('../../utils/helper.js');
+const { Generator } = require('../../utils/generate.js');
 const { state } = require('../../core/state.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
 const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox, applyRoundedCorners } = require('./borders.js');
-const { rasterizePixelFontCached, measurePixelFont, HALFBLOCK } = require('../pixel-font/pixelFont.js');
+const { rasterizePixelFontCached, HALFBLOCK } = require('../pixel-font/pixelFont.js');
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
 
@@ -509,11 +509,42 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       // Get image data (this will handle both regular images and GIFs)
       // For panel previews, we want static images (no animation)
       const staticMode = style.staticMode || false;
+      const isPreview = style.isPreview || false;
       
       // For GIFs, use the actual height, not the doubled height
       const isGif = src.toLowerCase().endsWith('.gif');
       const imageHeight = (isGif && !staticMode) ? height : genHeight;
-      const imageData = await getCachedOrGenerateImage(src, width, imageHeight, staticMode);
+      
+      // Normalize width and height based on image orientation to display full image
+      let normalizedWidth = width;
+      let normalizedHeight = imageHeight;
+      
+      // Only apply orientation-based normalization if we have explicit dimensions
+      if (style.width != null && style.height != null && !isPreview) {
+        try {
+          const generator = new Generator();
+          const dimensions = await generator.getImageDimensions(src);
+          const imageAspectRatio = dimensions.width / dimensions.height;
+          const passedAspectRatio = width / imageHeight;
+          
+          if (imageAspectRatio > 1) {
+            // Image is landscape (width > height)
+            // Use passed width as base and calculate height
+            normalizedWidth = width;
+            normalizedHeight = Math.round(width / imageAspectRatio);
+          } else {
+            // Image is portrait (height >= width)
+            // Use passed height as base and calculate width
+            normalizedHeight = imageHeight;
+            normalizedWidth = Math.round(imageHeight * imageAspectRatio);
+          }
+        } catch (error) {
+          // If we can't get image dimensions, fall back to original dimensions
+          console.warn(`Could not get image dimensions for ${src}:`, error.message);
+        }
+      }
+      
+      const imageData = await getCachedOrGenerateImage(src, normalizedWidth, normalizedHeight, staticMode);
       
 
       

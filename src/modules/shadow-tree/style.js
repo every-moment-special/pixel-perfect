@@ -47,6 +47,7 @@
  * @property {number} scrollbarWidth // integer >= 1; width in cells of vertical scrollbar when shown
  * @property {number} borderRadius // integer >= 0; radius for rounded corners
  * @property {boolean} staticMode // boolean; if true, the image will not be animated
+ * @property {boolean} isPreview // boolean; if true, the image is a preview
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -100,6 +101,7 @@ const baseDefaults = Object.freeze({
   scrollbarWidth: 1,
   borderRadius: 0,
   staticMode: true,
+  isPreview: false,
 });
 
 const defaultsByType = Object.freeze({
@@ -203,6 +205,7 @@ function normalizeStyle(type, rawStyle) {
   const scrollbarWidth = Math.max(1, coerceInteger(s.scrollbarWidth, d.scrollbarWidth || 1));
   const borderRadius = Math.max(0, coerceInteger(s.borderRadius, d.borderRadius || 0));
   const staticMode = coerceBoolean(s.staticMode, d.staticMode || false);
+  const isPreview = coerceBoolean(s.isPreview, d.isPreview || false);
   return {
     x,
     y,
@@ -228,6 +231,7 @@ function normalizeStyle(type, rawStyle) {
     scrollbarWidth,
     borderRadius,
     staticMode,
+    isPreview,
   };
 }
 

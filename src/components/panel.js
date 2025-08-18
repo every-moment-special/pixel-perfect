@@ -142,6 +142,7 @@ const Panel = (style = {}, content = []) => {
                     overflow: 'hidden',
                     zIndex: 0,
                     staticMode: true,
+                    isPreview: true,
                   },
                   item.path
                 ),
