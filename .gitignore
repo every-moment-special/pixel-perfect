@@ -1,4 +1,4 @@
 .vscode
-.temp
+.cache
 node_modules
 resources

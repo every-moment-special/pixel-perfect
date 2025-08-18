@@ -86,10 +86,10 @@ class GifPlayer {
 
     async extractGifFrames(gifPath, outputDir = null) {
         // Create a unique directory structure for each GIF
-        // Format: .temp/gif/[filename]/frames/
+        // Format: .cache/gif/[filename]/frames/
         if (!outputDir) {
             const gifFileName = path.basename(gifPath, path.extname(gifPath));
-            const gifDir = path.join('.temp', 'gif', gifFileName);
+            const gifDir = path.join('.cache', 'gif', gifFileName);
             outputDir = path.join(gifDir, 'frames');
         }
         
@@ -247,7 +247,7 @@ class GifPlayer {
         
         // Check if frames already exist for this GIF
         const gifFileName = path.basename(gifPath, path.extname(gifPath));
-        const gifDir = path.join('.temp', 'gif', gifFileName);
+        const gifDir = path.join('.cache', 'gif', gifFileName);
         const framesDir = path.join(gifDir, 'frames');
         
         let files = [];
@@ -446,7 +446,7 @@ class GifPlayer {
 
     // Static method to clean up all old GIF frame directories
     static cleanupAllGifFrames() {
-        const tempGifDir = path.join('.temp', 'gif');
+        const tempGifDir = path.join('.cache', 'gif');
         if (fs.existsSync(tempGifDir)) {
             try {
                 fs.rmSync(tempGifDir, { recursive: true, force: true });
