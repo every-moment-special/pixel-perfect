@@ -4,9 +4,9 @@ const { terminal } = require('../utils/helper.js');
 const { state } = require('../core/state.js');
 const { element } = require('../modules/shadow-tree/shadowTree');
 
-const Interface = () => {
+const Interface = async () => {
   if (state.view === 'photo' && state.photoPath) {
-    return Photo(state.photoPath);
+    return await Photo(state.photoPath);
   }
 
   return [

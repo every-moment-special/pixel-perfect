@@ -38,11 +38,11 @@ async function main() {
         try { event.enableMouse(); } catch (_) {}
     }
 
-    let tree = Interface();
+    let tree = await Interface();
     let laidOut = await render(tree);
     // Extra paint shortly after start to wipe any startup logs (e.g., inspector message)
     setTimeout(async () => {
-      tree = Interface();
+      tree = await Interface();
       laidOut = await render(tree);
     }, 200);
     // await gui.start();
@@ -176,7 +176,7 @@ async function main() {
             state.currentPath = path.join(state.currentPath, selectedItem.name);
             state.selectedIndex = 0;
             state.scrollY = 0;
-            tree = Interface();
+            tree = await Interface();
             laidOut = await render(tree);
           } else if (selectedItem.type === 'media') {
             const mediaFiles = items.filter(item => item.type === 'media');
@@ -186,7 +186,7 @@ async function main() {
             state.photoPath = selectedItem.path;
             state.mediaFiles = mediaFiles;
             state.mediaIndex = mediaIndex >= 0 ? mediaIndex : 0;
-            tree = Interface();
+            tree = await Interface();
             laidOut = await render(tree);
           }
         }
@@ -206,7 +206,7 @@ async function main() {
         state.selectedIndex = 0;
         state.scrollY = 0;
       }
-      tree = Interface();
+      tree = await Interface();
       laidOut = await render(tree);
     });
 
@@ -219,7 +219,7 @@ async function main() {
           state.selectedIndex = newIndex;
           const rowIndex = Math.floor(newIndex / Math.max(1, ctx.columns));
           ensureRowVisible(ctx, rowIndex);
-          tree = Interface();
+          tree = await Interface();
           laidOut = await render(tree);
           return;
         }
@@ -231,7 +231,7 @@ async function main() {
       const next = Math.max(0, Math.min(target, max));
       if (next === prev) return;
       state.scrollY = next;
-      tree = Interface();
+      tree = await Interface();
       laidOut = await render(tree);
     });
     event.on('key:down', async () => {
@@ -243,7 +243,7 @@ async function main() {
           state.selectedIndex = newIndex;
           const rowIndex = Math.floor(newIndex / Math.max(1, ctx.columns));
           ensureRowVisible(ctx, rowIndex);
-          tree = Interface();
+          tree = await Interface();
           laidOut = await render(tree);
           return;
         }
@@ -255,7 +255,7 @@ async function main() {
       const next = Math.max(0, Math.min(target, max));
       if (next === prev) return;
       state.scrollY = next;
-      tree = Interface();
+      tree = await Interface();
       laidOut = await render(tree);
     });
 
@@ -293,7 +293,7 @@ async function main() {
             state.scrollY = 0;
           }
         }
-        tree = Interface();
+        tree = await Interface();
         laidOut = await render(tree);
         return;
       }
@@ -350,7 +350,7 @@ async function main() {
         if (next !== prev) {
           state.mediaIndex = next;
           state.photoPath = state.mediaFiles[next].path;
-          tree = Interface();
+          tree = await Interface();
           laidOut = await render(tree);
         }
         return;
@@ -373,7 +373,7 @@ async function main() {
         ensureRowVisible(ctx, rowIndex);
       }
 
-      tree = Interface();
+      tree = await Interface();
       laidOut = await render(tree);
     });
 
@@ -384,7 +384,7 @@ async function main() {
         if (next !== prev) {
           state.mediaIndex = next;
           state.photoPath = state.mediaFiles[next].path;
-          tree = Interface();
+          tree = await Interface();
           laidOut = await render(tree);
         }
         return;
@@ -407,7 +407,7 @@ async function main() {
         ensureRowVisible(ctx, rowIndex);
       }
 
-      tree = Interface();
+      tree = await Interface();
       laidOut = await render(tree);
     });
 
@@ -417,7 +417,7 @@ async function main() {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         (async () => {
-          tree = Interface();
+          tree = await Interface();
           laidOut = await render(tree);
         })();
       }, 50);
@@ -432,7 +432,7 @@ async function main() {
     setInterval(async () => {
       if (state.needsRerender) {
         state.needsRerender = false;
-        tree = Interface();
+        tree = await Interface();
         laidOut = await render(tree);
       }
     }, 100); // Check every 100ms for re-render needs

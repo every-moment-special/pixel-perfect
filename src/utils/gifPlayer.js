@@ -21,6 +21,8 @@ class GifPlayer {
         this.maxCacheSize = CONFIG.maxCacheSize;
         this.onFrameUpdate = null;
         this.frameDelay = 1000 / this.fps;
+        this.isLoading = false;
+        this.currentFrameConversionProcess = null; // Track ongoing frame conversion
     }
 
     async getGifFps(gifPath) {
@@ -143,6 +145,22 @@ class GifPlayer {
                 finalHeight = Math.round(width / aspectRatio);
             }
             
+            // Apply aspect ratio normalization similar to regular images
+            // This ensures GIFs respect the same resize functionality as images
+            const passedAspectRatio = width / height;
+            
+            if (aspectRatio > 1) {
+                // Image is landscape (width > height)
+                // Use passed width as base and calculate height
+                finalWidth = width;
+                finalHeight = Math.round(width / aspectRatio);
+            } else {
+                // Image is portrait (height >= width)
+                // Use passed height as base and calculate width
+                finalHeight = height;
+                finalWidth = Math.round(height * aspectRatio);
+            }
+            
             // Scale down if too large
             const maxCells = CONFIG.maxCells;
             const estimatedCells = finalWidth * Math.ceil(finalHeight / 2);
@@ -220,7 +238,7 @@ class GifPlayer {
         }
     }
 
-    async loadGif(gifPath, width, height) {
+    async loadGif(gifPath, width, height, normalizedWidth = null, normalizedHeight = null) {
         // console.log('Loading GIF:', gifPath);
         
         // Get the actual FPS of the GIF
@@ -256,6 +274,8 @@ class GifPlayer {
         this.frameFiles = files;
         this.width = width;
         this.height = height;
+        this.normalizedWidth = normalizedWidth || width;
+        this.normalizedHeight = normalizedHeight || height;
         
         return files.length;
     }
@@ -268,15 +288,18 @@ class GifPlayer {
             return null;
         }
 
-        if (this.frameCache.has(normalizedIndex)) {
-            return this.frameCache.get(normalizedIndex);
+        // Use size-specific cache key
+        const cacheKey = this.getCacheKey(normalizedIndex, this.normalizedWidth, this.normalizedHeight);
+        
+        if (this.frameCache.has(cacheKey)) {
+            return this.frameCache.get(cacheKey);
         }
 
         const framePath = path.join(this.framesDir, this.frameFiles[normalizedIndex]);
-        // Double the height because convertFrameToArt expects pixel height, not terminal cell height
-        const artData = await this.convertFrameToArt(framePath, this.width, this.height * 2);
+        // Use normalized dimensions for frame conversion, but double the height because convertFrameToArt expects pixel height, not terminal cell height
+        const artData = await this.convertFrameToArt(framePath, this.normalizedWidth, this.normalizedHeight * 2);
         
-        this.frameCache.set(normalizedIndex, artData);
+        this.frameCache.set(cacheKey, artData);
         
         if (this.frameCache.size > this.maxCacheSize) {
             // Remove the oldest frame that's not the current frame or the next few frames
@@ -286,9 +309,11 @@ class GifPlayer {
                 if (keysToRemove.length >= this.frameCache.size - this.maxCacheSize) break;
                 // Don't remove current frame or the next 2 frames
                 const currentNormalized = this.currentFrame % this.frameFiles.length;
-                if (key !== currentNormalized && 
-                    key !== (currentNormalized + 1) % this.frameFiles.length &&
-                    key !== (currentNormalized + 2) % this.frameFiles.length) {
+                const currentCacheKey = this.getCacheKey(currentNormalized, this.normalizedWidth, this.normalizedHeight);
+                const nextCacheKey = this.getCacheKey((currentNormalized + 1) % this.frameFiles.length, this.normalizedWidth, this.normalizedHeight);
+                const nextNextCacheKey = this.getCacheKey((currentNormalized + 2) % this.frameFiles.length, this.normalizedWidth, this.normalizedHeight);
+                
+                if (key !== currentCacheKey && key !== nextCacheKey && key !== nextNextCacheKey) {
                     keysToRemove.push(key);
                 }
             }
@@ -393,6 +418,7 @@ class GifPlayer {
 
     cleanup() {
         this.stop();
+        this.killFrameConversion();
         if (this.framesDir && fs.existsSync(this.framesDir)) {
             // Clean up temporary frames directory and parent directories if empty
             try {
@@ -427,6 +453,41 @@ class GifPlayer {
                 // console.log('Cleaned up all GIF frame directories');
             } catch (error) {
                 // console.log('Warning: Could not clean up GIF frame directories:', error.message);
+            }
+        }
+    }
+
+    // Check if the GIF player needs to be reloaded due to terminal resize
+    needsReload(newWidth, newHeight, newNormalizedWidth, newNormalizedHeight) {
+        return this.width !== newWidth || 
+               this.height !== newHeight ||
+               this.normalizedWidth !== newNormalizedWidth ||
+               this.normalizedHeight !== newNormalizedHeight;
+    }
+
+    // Kill any ongoing frame conversion processes
+    killFrameConversion() {
+        if (this.currentFrameConversionProcess) {
+            try {
+                this.currentFrameConversionProcess.kill();
+                this.currentFrameConversionProcess = null;
+            } catch (error) {
+                // Ignore errors when killing process
+            }
+        }
+    }
+
+    // Generate a cache key based on frame index and dimensions
+    getCacheKey(frameIndex, width, height) {
+        return `${frameIndex}_${width}x${height}`;
+    }
+
+    // Clear cache entries for specific dimensions
+    clearSizeCache(width, height) {
+        const sizePattern = `_${width}x${height}`;
+        for (const [key, _] of this.frameCache.entries()) {
+            if (key.includes(sizePattern)) {
+                this.frameCache.delete(key);
             }
         }
     }
