@@ -35,7 +35,7 @@ const Photo = (imagePath) => {
       gifPlayer.isLoading = true;
       
       // Load and start the GIF
-      gifPlayer.loadGif(imagePath, terminal.width, terminal.height - 7).then(() => {
+      gifPlayer.loadGif(imagePath, terminal.width, terminal.height - 4).then(() => {
         gifPlayer.isLoading = false;
         gifPlayer.play((frameData) => {
           // This callback will be called for each frame update
@@ -55,7 +55,7 @@ const Photo = (imagePath) => {
     } else if (!gifPlayer.isPlaying && gifPlayer.frameCache.size === 0) {
       // If the player exists but has no frames, reload it
       gifPlayer.isLoading = true;
-      gifPlayer.loadGif(imagePath, terminal.width, terminal.height - 7).then(() => {
+      gifPlayer.loadGif(imagePath, terminal.width, terminal.height - 4).then(() => {
         gifPlayer.isLoading = false;
         gifPlayer.play((frameData) => {
           if (state.photoPath === imagePath) {
@@ -80,10 +80,9 @@ const Photo = (imagePath) => {
     }, [
       element('img', {
         width: terminal.width,
-        height: terminal.height - 7,
+        height: terminal.height - 4,
         textAlign: 'left',
         verticalAlign: 'top',
-        fontSize: 2,
         pixelFont: true,
         backgroundColor: 'black',
         overflow: 'hidden',
@@ -92,10 +91,10 @@ const Photo = (imagePath) => {
 
       element('text', {
         width: terminal.width,
-        height: 7,
-        y: terminal.height - 7,
+        height: 4,
+        y: terminal.height - 4,
         textAlign: 'center',
-        verticalAlign: 'middle',
+        verticalAlign: 'bottom',
         fontSize: 1,
         pixelFont: true,
         fontFamily: 'compact',

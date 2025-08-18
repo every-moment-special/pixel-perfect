@@ -23,9 +23,9 @@ const Panel = (style = {}, content = []) => {
 
   style = {
     x: style.x !== undefined ? style.x : 0,
-    y: style.y !== undefined ? style.y : terminal.height - 7,
+    y: style.y !== undefined ? style.y : terminal.height - 4,
     width: terminal.width,
-    height: 7,
+    height: 4,
     backgroundColor: 'black',
     zIndex: 10,
     position: 'fixed',
@@ -34,7 +34,7 @@ const Panel = (style = {}, content = []) => {
   return [
     element('div', {
         width: terminal.width,
-        height: terminal.height - 7 - 4,
+        height: terminal.height - 4 - 4,
         y: 4,
         textAlign: 'left',
         verticalAlign: 'top',
@@ -170,10 +170,10 @@ const Panel = (style = {}, content = []) => {
     element('div', style, [
       element('text', {
           width: terminal.width / 2 - 4,
-          height: 7,
+          height: 4,
           x: 4,
           textAlign: 'left',
-          verticalAlign: 'middle',
+          verticalAlign: 'bottom',
           fontSize: 1,
           pixelFont: true,
           fontFamily: 'compact',
@@ -185,10 +185,10 @@ const Panel = (style = {}, content = []) => {
       ),
       element('text', {
         width: terminal.width / 2 - 4,
-        height: 7,
+        height: 4,
         x: terminal.width / 2 - 4,
         textAlign: 'right',
-        verticalAlign: 'middle',
+        verticalAlign: 'bottom',
         fontSize: 1,
         pixelFont: true,
         fontFamily: 'compact',
