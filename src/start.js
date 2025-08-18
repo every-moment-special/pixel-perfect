@@ -10,6 +10,10 @@ const { setFontMode, FONT_MODE } = require('./modules/pixel-font/pixelFont.js');
 const path = require('path');
 
 async function main() {
+  // Clean up old GIF frame directories on startup
+  const { GifPlayer } = require('./utils/gifPlayer.js');
+  GifPlayer.cleanupAllGifFrames();
+  
   // Check for compact font mode via environment variable or command line
   const useCompactFont = process.env.COMPACT_FONT === 'true' || process.argv.includes('--compact-font');
   if (useCompactFont) {
@@ -30,7 +34,9 @@ async function main() {
     process.stdout.write('\x1b[?12l');
 
     // Enable mouse tracking (SGR) so we can receive click events
-    try { event.enableMouse(); } catch (_) {}
+    if (process.stdin.isTTY) {
+        try { event.enableMouse(); } catch (_) {}
+    }
 
     let tree = Interface();
     let laidOut = await render(tree);
@@ -422,6 +428,15 @@ async function main() {
       cleanupImageCache();
     }, 60000); // Clean up every minute
 
+    // Continuous rendering loop for GIF animations
+    setInterval(async () => {
+      if (state.needsRerender) {
+        state.needsRerender = false;
+        tree = Interface();
+        laidOut = await render(tree);
+      }
+    }, 100); // Check every 100ms for re-render needs
+
   } catch (err) {
     console.error("Startup error:", err);
     process.exit(1);
@@ -431,6 +446,18 @@ async function main() {
 async function shutdown() {
   console.log("Running cleanup...");
   try {
+    // Clean up GIF players
+    if (state.gifPlayers) {
+      for (const [key, gifPlayer] of state.gifPlayers.entries()) {
+        gifPlayer.cleanup();
+      }
+      state.gifPlayers.clear();
+    }
+    
+    // Clean up all GIF frame directories
+    const { GifPlayer } = require('./utils/gifPlayer.js');
+    GifPlayer.cleanupAllGifFrames();
+    
     if (isKitty) {
       await setTerminalFontSize(9);
     }
@@ -446,7 +473,16 @@ async function shutdown() {
   }
 }
 
-event.on('key:q', shutdown);  // q to quit
+    event.on('key:q', shutdown);  // q to quit
+    event.on('key:c', () => {
+        // Clear cache when 'c' is pressed
+        const { clearImageCache } = require('./utils/helper.js');
+        clearImageCache();
+        
+        // Also clean up GIF frame directories
+        const { GifPlayer } = require('./utils/gifPlayer.js');
+        GifPlayer.cleanupAllGifFrames();
+    });
 process.on('SIGINT', shutdown);   // Ctrl+C
 process.on('SIGTERM', shutdown);  // kill
 process.on('uncaughtException', err => {

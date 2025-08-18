@@ -73,13 +73,14 @@ class Generator {
         const maxCells = CONFIG.maxCells;
         let cellCount = 0;
 
-        for (let y = 0; y < height - 1; y += 2) {
+        for (let y = 0; y < height; y += 2) {
             for (let x = 0; x < width; x++) {
                 const upperIndex = (y * width + x) * channels;
-                const lowerIndex = ((y + 1) * width + x) * channels;
+                const hasLowerRow = (y + 1) < height;
+                const lowerIndex = hasLowerRow ? ((y + 1) * width + x) * channels : upperIndex;
     
                 const upperA = channels === 4 ? data[upperIndex + 3] : 255;
-                const lowerA = channels === 4 ? data[lowerIndex + 3] : 255;
+                const lowerA = hasLowerRow ? (channels === 4 ? data[lowerIndex + 3] : 255) : 0;
 
                 let char = '';
                 let ansi = '';

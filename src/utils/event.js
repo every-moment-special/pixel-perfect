@@ -16,7 +16,9 @@ class Event {
 
         // Put TTY into raw, no-echo, non-canonical mode so input bytes are not printed
         if (process.stdin.isTTY) {
-          try { execSync('stty -echo -icanon min 1 time 0'); } catch (_) {}
+          try { 
+            execSync('stty -echo -icanon min 1 time 0', { stdio: 'ignore' }); 
+          } catch (_) {}
         }
 
         // Key Press + Mouse
@@ -60,7 +62,13 @@ class Event {
         });
 
         // Ensure terminal settings are restored when exiting
-        const restoreEcho = () => { if (process.stdin.isTTY) { try { execSync('stty sane'); } catch (_) {} } };
+        const restoreEcho = () => { 
+            if (process.stdin.isTTY) { 
+                try { 
+                    execSync('stty sane', { stdio: 'ignore' }); 
+                } catch (_) {} 
+            } 
+        };
         process.on('exit', restoreEcho);
         process.on('SIGINT', () => { restoreEcho(); process.exit(); });
         process.on('SIGTERM', () => { restoreEcho(); process.exit(); });

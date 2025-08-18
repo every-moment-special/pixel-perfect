@@ -15,8 +15,8 @@ const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '
 const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
-const currentPath = process.cwd();
-// const currentPath = path.join(__dirname, '..', '..', 'resources');
+// const currentPath = process.cwd();
+const currentPath = path.join(__dirname, '..', '..', 'resources');
 
 const colors = {
     black: '\x1b[38;2;0;0;0m',
@@ -140,8 +140,16 @@ const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1, fontFa
 };
 
 // Cache for generated directory item images
-const getCachedOrGenerateImage = async (itemPath, width, height) => {
+const getCachedOrGenerateImage = async (itemPath, width, height, staticMode = false) => {
     const { state } = require('../core/state');
+    
+    // Check if this is a GIF and we're not in static mode
+    const isGif = itemPath.toLowerCase().endsWith('.gif');
+    if (isGif && !staticMode) {
+        // Return a GIF placeholder that will be handled by the shadow tree
+        return { isGif: true };
+    }
+    
     const cacheKey = `${itemPath}:${width}:${height}`;
     
     // Check if we have a cached version
@@ -183,6 +191,13 @@ const cleanupImageCache = () => {
     }
 };
 
+// Clear all image cache (useful for debugging)
+const clearImageCache = () => {
+    const { state } = require('../core/state');
+    state.directoryItemCache.clear();
+    console.log('Image cache cleared');
+};
+
 module.exports = {
     setTerminalFontSize,
     readDirectory,
@@ -197,4 +212,5 @@ module.exports = {
     truncateFilenameKeepExtension,
     getCachedOrGenerateImage,
     cleanupImageCache,
+    clearImageCache,
 }

@@ -34,18 +34,18 @@ const display = (data) => {
     
     if (process.stdin.isTTY) {
         process.stdin.setRawMode(true);
-    }
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
+        process.stdin.resume();
+        process.stdin.setEncoding('utf8');
 
-    process.stdin.on('data', (key) => {
-        if (key === 'q') {
-            process.stdout.write('\x1b[2J\x1b[H');
-            process.stdin.setRawMode(false);
-            process.stdin.pause();
-            process.exit(0);
-        }
-    });
+        process.stdin.on('data', (key) => {
+            if (key === 'q') {
+                process.stdout.write('\x1b[2J\x1b[H');
+                process.stdin.setRawMode(false);
+                process.stdin.pause();
+                process.exit(0);
+            }
+        });
+    }
 }
 
 if (require.main === module) {

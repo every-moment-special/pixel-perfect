@@ -1,4 +1,6 @@
 const { terminal, colors, generate, getCachedOrGenerateImage } = require('../../utils/helper.js');
+const { GifPlayer } = require('../../utils/gifPlayer.js');
+const { state } = require('../../core/state.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
 const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox, applyRoundedCorners } = require('./borders.js');
@@ -503,15 +505,89 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
 
     if (src) {
       const genHeight = (style.height != null) ? height * 2 : height;
-      const cells = await getCachedOrGenerateImage(src, width, genHeight);
-      for (const pixel of cells) {
-        const cx = x + pixel.x;
-        const cy = y + pixel.y;
-        if (clipRect) {
-          if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+      
+      // Get image data (this will handle both regular images and GIFs)
+      // For panel previews, we want static images (no animation)
+      const staticMode = style.staticMode || false;
+      
+      // For GIFs, use the actual height, not the doubled height
+      const isGif = src.toLowerCase().endsWith('.gif');
+      const imageHeight = (isGif && !staticMode) ? height : genHeight;
+      const imageData = await getCachedOrGenerateImage(src, width, imageHeight, staticMode);
+      
+
+      
+      // Check if the result is a GIF placeholder or actual image data
+      if (imageData && imageData.isGif && !staticMode) {
+        // This is a GIF placeholder in animation mode, handle it like a GIF
+        if (!state.gifPlayers) {
+          state.gifPlayers = new Map();
         }
-        if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
-        buffer[cy][cx].raw = (pixel.ansi || '') + (pixel.char || ' ');
+        
+        const gifKey = src;
+        const gifPlayer = state.gifPlayers.get(gifKey);
+        
+        // Only use this GIF player if it's the currently active one
+        if (gifPlayer && !gifPlayer.isLoading && gifPlayer.frameCache.size > 0 && state.photoPath === src) {
+          // Get the current frame from the GIF player
+          // The currentFrame might exceed frame count, so we need to normalize it
+          const currentFrameIndex = gifPlayer.currentFrame % gifPlayer.frameFiles.length;
+          const frameData = gifPlayer.frameCache.get(currentFrameIndex);
+          
+          // If the current frame is not in cache, try to get the first available frame
+          if (!frameData && gifPlayer.frameCache.size > 0) {
+            const firstKey = gifPlayer.frameCache.keys().next().value;
+            const firstFrame = gifPlayer.frameCache.get(firstKey);
+            if (firstFrame) {
+              for (const pixel of firstFrame) {
+                const cx = x + pixel.x;
+                const cy = y + pixel.y;
+                if (clipRect) {
+                  if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+                }
+                if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
+                buffer[cy][cx].raw = (pixel.ansi || '') + (pixel.char || ' ');
+              }
+            }
+            return;
+          }
+          
+          if (frameData) {
+            for (const pixel of frameData) {
+              const cx = x + pixel.x;
+              const cy = y + pixel.y;
+              if (clipRect) {
+                if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+              }
+              if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
+              buffer[cy][cx].raw = (pixel.ansi || '') + (pixel.char || ' ');
+            }
+          }
+        } else {
+          // Show a loading placeholder for GIFs
+          const loadingText = gifPlayer && gifPlayer.isLoading ? 'Loading GIF...' : 'GIF Error';
+          const startX = x + Math.floor((width - loadingText.length) / 2);
+          const startY = y + Math.floor(height / 2);
+          
+          for (let i = 0; i < loadingText.length; i++) {
+            const cx = startX + i;
+            const cy = startY;
+            if (cx >= 0 && cx < buffer[0].length && cy >= 0 && cy < buffer.length) {
+              buffer[cy][cx].raw = '\x1b[37m' + loadingText[i] + '\x1b[0m';
+            }
+          }
+        }
+      } else {
+        // This is regular image data (array of pixels) - either a regular image or a GIF in static mode
+        for (const pixel of imageData) {
+          const cx = x + pixel.x;
+          const cy = y + pixel.y;
+          if (clipRect) {
+            if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
+          }
+          if (cy < 0 || cy >= buffer.length || cx < 0 || cx >= buffer[0].length) continue;
+          buffer[cy][cx].raw = (pixel.ansi || '') + (pixel.char || ' ');
+        }
       }
     }
 

@@ -13,6 +13,10 @@ const state = {
   // Cache for generated directory item images
   directoryItemCache: new Map(), // key: itemPath, value: { cells, timestamp }
   lastDirectoryRead: null, // timestamp of last directory read
+  // GIF player management
+  gifPlayers: new Map(), // key: gifPath, value: GifPlayer instance
+  onGifFrameUpdate: null, // callback for when GIF frames update
+  needsRerender: false, // flag to indicate if a re-render is needed
 };
 
 module.exports = { state };

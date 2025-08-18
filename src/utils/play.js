@@ -296,13 +296,20 @@ class Player {
             process.exit(0);
         });
 
-        console.log('\nControls:');
-        console.log('  Space - Pause/Resume');
-        console.log('  f - Fast forward 5 frames');
-        console.log('  b - Rewind 5 frames');
-        console.log('  q - Quit');
+        // Handle non-TTY mode
+        if (!process.stdin.isTTY) {
+            console.log('\nRunning in non-interactive mode. Video will play automatically.');
+            console.log('Press Ctrl+C to stop.');
+        }
 
-        process.stdin.on('data', async (key) => {
+        if (process.stdin.isTTY) {
+            console.log('\nControls:');
+            console.log('  Space - Pause/Resume');
+            console.log('  f - Fast forward 5 frames');
+            console.log('  b - Rewind 5 frames');
+            console.log('  q - Quit');
+
+            process.stdin.on('data', async (key) => {
             switch (key) {
                 case 'q':
                     this.pause();
@@ -346,6 +353,7 @@ class Player {
                     break;
             }
         });
+        }
     }
 
     getMemoryUsage() {
