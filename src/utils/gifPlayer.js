@@ -23,6 +23,65 @@ class GifPlayer {
         this.frameDelay = 1000 / this.fps;
     }
 
+    async getGifFps(gifPath) {
+        return new Promise((resolve) => {
+            const ffprobe = spawn('ffprobe', [
+                '-v', '0',
+                '-select_streams', 'v:0',
+                '-show_entries', 'stream=avg_frame_rate',
+                '-of', 'compact=p=0:nk=1',
+                gifPath
+            ], {
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+
+            let output = '';
+            let errorOutput = '';
+
+            ffprobe.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            ffprobe.stderr.on('data', (data) => {
+                errorOutput += data.toString();
+            });
+
+            ffprobe.on('close', (code) => {
+                if (code === 0 && output.trim()) {
+                    try {
+                        // Parse the frame rate (format: "20/3" for compact output)
+                        const frameRateMatch = output.trim().match(/^(\d+)\/(\d+)$/);
+                        if (frameRateMatch) {
+                            const numerator = parseInt(frameRateMatch[1]);
+                            const denominator = parseInt(frameRateMatch[2]);
+                            const fps = numerator / denominator;
+                            resolve(fps);
+                        } else {
+                            // Fallback: try to parse other formats
+                            const altFrameRateMatch = output.trim().match(/avg_frame_rate=(\d+)\/(\d+)/);
+                            if (altFrameRateMatch) {
+                                const numerator = parseInt(altFrameRateMatch[1]);
+                                const denominator = parseInt(altFrameRateMatch[2]);
+                                const fps = numerator / denominator;
+                                resolve(fps);
+                            } else {
+                                resolve(CONFIG.defaultFps);
+                            }
+                        }
+                    } catch (error) {
+                        resolve(CONFIG.defaultFps);
+                    }
+                } else {
+                    resolve(CONFIG.defaultFps);
+                }
+            });
+
+            ffprobe.on('error', () => {
+                resolve(CONFIG.defaultFps);
+            });
+        });
+    }
+
     async extractGifFrames(gifPath, outputDir = null) {
         // Create a unique directory structure for each GIF
         // Format: .temp/gif/[filename]/frames/
@@ -163,6 +222,10 @@ class GifPlayer {
 
     async loadGif(gifPath, width, height) {
         // console.log('Loading GIF:', gifPath);
+        
+        // Get the actual FPS of the GIF
+        const detectedFps = await this.getGifFps(gifPath);
+        this.setFps(detectedFps);
         
         // Check if frames already exist for this GIF
         const gifFileName = path.basename(gifPath, path.extname(gifPath));
