@@ -141,6 +141,7 @@ const Panel = (style = {}, content = []) => {
                     backgroundColor: 'black',
                     overflow: 'hidden',
                     zIndex: 0,
+                    staticMode: true,
                   },
                   item.path
                 ),

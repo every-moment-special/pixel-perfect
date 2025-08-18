@@ -565,17 +565,17 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           }
         } else {
           // Show a loading placeholder for GIFs
-          const loadingText = gifPlayer && gifPlayer.isLoading ? 'Loading GIF...' : 'GIF Error';
-          const startX = x + Math.floor((width - loadingText.length) / 2);
-          const startY = y + Math.floor(height / 2);
+          // const loadingText = gifPlayer && gifPlayer.isLoading ? 'Loading GIF...' : 'GIF Error';
+          // const startX = x + Math.floor((width - loadingText.length) / 2);
+          // const startY = y + Math.floor(height / 2);
           
-          for (let i = 0; i < loadingText.length; i++) {
-            const cx = startX + i;
-            const cy = startY;
-            if (cx >= 0 && cx < buffer[0].length && cy >= 0 && cy < buffer.length) {
-              buffer[cy][cx].raw = '\x1b[37m' + loadingText[i] + '\x1b[0m';
-            }
-          }
+          // for (let i = 0; i < loadingText.length; i++) {
+          //   const cx = startX + i;
+          //   const cy = startY;
+          //   if (cx >= 0 && cx < buffer[0].length && cy >= 0 && cy < buffer.length) {
+          //     buffer[cy][cx].raw = '\x1b[37m' + loadingText[i] + '\x1b[0m';
+          //   }
+          // }
         }
       } else {
         // This is regular image data (array of pixels) - either a regular image or a GIF in static mode

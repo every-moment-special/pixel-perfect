@@ -46,7 +46,7 @@ const Photo = (imagePath) => {
           }
         });
       }).catch(error => {
-        console.error('Error loading GIF:', error);
+        // console.error('Error loading GIF:', error);
         gifPlayer.isLoading = false;
       });
     } else if (!gifPlayer.isPlaying && gifPlayer.frameCache.size > 0) {
@@ -63,7 +63,7 @@ const Photo = (imagePath) => {
           }
         });
       }).catch(error => {
-        console.error('Error reloading GIF:', error);
+        // console.error('Error reloading GIF:', error);
         gifPlayer.isLoading = false;
       });
     }
@@ -87,6 +87,7 @@ const Photo = (imagePath) => {
         backgroundColor: 'black',
         overflow: 'hidden',
         zIndex: 0,
+        staticMode: false,
       }, imagePath),
 
       element('text', {

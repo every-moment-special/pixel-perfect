@@ -46,6 +46,7 @@
  * @property {number} scrollY // integer >= 0; used when overflow is 'auto'
  * @property {number} scrollbarWidth // integer >= 1; width in cells of vertical scrollbar when shown
  * @property {number} borderRadius // integer >= 0; radius for rounded corners
+ * @property {boolean} staticMode // boolean; if true, the image will not be animated
  */
 
 const coerceIntegerOrNull = (value) => {
@@ -98,6 +99,7 @@ const baseDefaults = Object.freeze({
   scrollY: 0,
   scrollbarWidth: 1,
   borderRadius: 0,
+  staticMode: true,
 });
 
 const defaultsByType = Object.freeze({
@@ -200,7 +202,7 @@ function normalizeStyle(type, rawStyle) {
   const scrollY = Math.max(0, coerceInteger(s.scrollY, d.scrollY || 0));
   const scrollbarWidth = Math.max(1, coerceInteger(s.scrollbarWidth, d.scrollbarWidth || 1));
   const borderRadius = Math.max(0, coerceInteger(s.borderRadius, d.borderRadius || 0));
-
+  const staticMode = coerceBoolean(s.staticMode, d.staticMode || false);
   return {
     x,
     y,
@@ -225,6 +227,7 @@ function normalizeStyle(type, rawStyle) {
     scrollY,
     scrollbarWidth,
     borderRadius,
+    staticMode,
   };
 }
 
