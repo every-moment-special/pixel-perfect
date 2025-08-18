@@ -100,7 +100,7 @@ class GifPlayer {
             
             const ffmpeg = spawn('ffmpeg', [
                 '-i', gifPath,
-                '-vf', 'fps=10', // Extract at 10fps for smooth playback
+                '-vsync', '0', // Don't force frame rate conversion
                 '-frame_pts', '1',
                 path.join(outputDir, 'frame_%04d.png')
             ], {
@@ -313,6 +313,7 @@ class GifPlayer {
         this.isPlaying = true;
         this.currentFrame = 0;
         this.onFrameUpdate = onFrameUpdate;
+        this.startTime = Date.now();
         
         const playNextFrame = async () => {
             if (!this.isPlaying) return;
@@ -326,9 +327,15 @@ class GifPlayer {
             
             if (this.currentFrame >= this.frameFiles.length) {
                 this.currentFrame = 0; // Loop back to start
+                this.startTime = Date.now(); // Reset timing for new loop
             }
             
-            this.frameInterval = setTimeout(playNextFrame, this.frameDelay);
+            // Calculate precise timing to avoid drift
+            const elapsedTime = Date.now() - this.startTime;
+            const expectedFrameTime = (this.currentFrame * this.frameDelay);
+            const delay = Math.max(0, expectedFrameTime - elapsedTime);
+            
+            this.frameInterval = setTimeout(playNextFrame, delay);
         };
         
         playNextFrame();
@@ -344,6 +351,7 @@ class GifPlayer {
     resume() {
         if (this.frameFiles.length > 0 && !this.isPlaying) {
             this.isPlaying = true;
+            this.startTime = Date.now() - (this.currentFrame * this.frameDelay); // Adjust start time for current position
             // Don't reset currentFrame, just continue from where we left off
             const playNextFrame = async () => {
                 if (!this.isPlaying) return;
@@ -357,9 +365,15 @@ class GifPlayer {
                 
                 if (this.currentFrame >= this.frameFiles.length) {
                     this.currentFrame = 0; // Loop back to start
+                    this.startTime = Date.now(); // Reset timing for new loop
                 }
                 
-                this.frameInterval = setTimeout(playNextFrame, this.frameDelay);
+                // Calculate precise timing to avoid drift
+                const elapsedTime = Date.now() - this.startTime;
+                const expectedFrameTime = (this.currentFrame * this.frameDelay);
+                const delay = Math.max(0, expectedFrameTime - elapsedTime);
+                
+                this.frameInterval = setTimeout(playNextFrame, delay);
             };
             
             playNextFrame();
