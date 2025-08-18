@@ -1,5 +1,5 @@
 const { element } = require('../modules/shadow-tree/shadowTree');
-const { terminal, isKitty } = require('../utils/helper');
+const { terminal } = require('../utils/helper');
 const { state } = require('../core/state');
 const { truncateFilenameKeepExtension } = require('../utils/helper');
 const { GifPlayer } = require('../utils/gifPlayer');

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const { exec } = require('child_process');
 const { setTerminalFontSize, isKitty, readDirectory, cleanupImageCache } = require('./utils/helper.js');
 const Interface = require('./components/interface.js');
 const { render } = require('./modules/shadow-tree/shadowTree.js');
