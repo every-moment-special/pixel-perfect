@@ -546,7 +546,20 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       
       const imageData = await getCachedOrGenerateImage(src, normalizedWidth, normalizedHeight, staticMode);
       
-
+      // Calculate centering offsets for the image (only for non-preview images)
+      const offsetX = !isPreview ? Math.floor((width - normalizedWidth) / 2) : 0;
+      // For Y offset, ensure we don't exceed allocated space and scale appropriately
+      let offsetY = 0;
+      if (!isPreview) {
+        if (isGif && !staticMode) {
+          // For GIFs, ensure normalizedHeight doesn't exceed the allocated height
+          const effectiveHeight = Math.min(normalizedHeight, height);
+          offsetY = Math.floor((height - effectiveHeight) / 2);
+        } else {
+          // For regular images, scale the difference to match the rendering space
+          offsetY = Math.floor((height - (normalizedHeight * height / imageHeight)) / 2);
+        }
+      }
       
       // Check if the result is a GIF placeholder or actual image data
       if (imageData && imageData.isGif && !staticMode) {
@@ -571,8 +584,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             const firstFrame = gifPlayer.frameCache.get(firstKey);
             if (firstFrame) {
               for (const pixel of firstFrame) {
-                const cx = x + pixel.x;
-                const cy = y + pixel.y;
+                const cx = x + offsetX + pixel.x;
+                const cy = y + offsetY + pixel.y;
                 if (clipRect) {
                   if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
                 }
@@ -585,8 +598,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           
           if (frameData) {
             for (const pixel of frameData) {
-              const cx = x + pixel.x;
-              const cy = y + pixel.y;
+              const cx = x + offsetX + pixel.x;
+              const cy = y + offsetY + pixel.y;
               if (clipRect) {
                 if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
               }
@@ -611,8 +624,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       } else {
         // This is regular image data (array of pixels) - either a regular image or a GIF in static mode
         for (const pixel of imageData) {
-          const cx = x + pixel.x;
-          const cy = y + pixel.y;
+          const cx = x + offsetX + pixel.x;
+          const cy = y + offsetY + pixel.y;
           if (clipRect) {
             if (cx < clipRect.x || cx >= clipRect.x + clipRect.width || cy < clipRect.y || cy >= clipRect.y + clipRect.height) continue;
           }
