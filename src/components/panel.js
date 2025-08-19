@@ -86,7 +86,7 @@ const Panel = (style = {}, content = []) => {
                   y: 0,
                   textAlign: 'center',
                   verticalAlign: 'middle',
-                  fontSize: 5,
+                  fontSize: 3,
                   pixelFont: true,
                   fontFamily: 'compact',
                   backgroundColor: 'transparent',

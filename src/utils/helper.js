@@ -15,8 +15,8 @@ const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '
 const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
-// const currentPath = process.cwd();
-const currentPath = path.join(__dirname, '..', '..', 'resources');
+const currentPath = process.cwd();
+// const currentPath = path.join(__dirname, '..', '..', 'resources');
 
 const colors = {
     black: '\x1b[38;2;0;0;0m',
@@ -79,7 +79,7 @@ const readDirectory = (currentPath) => {
         const items = [];
 
         for (const file of files) {
-            if (file === '.' || file === '..') continue;
+            if (file === '.' || file === '..' || file.startsWith('.')) continue;
             
             const fullPath = path.join(currentPath, file);
             const stats = fs.statSync(fullPath);
