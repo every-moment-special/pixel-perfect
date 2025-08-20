@@ -4,7 +4,7 @@ const { state } = require('../../core/state.js');
 const { resolveStylesTree } = require('./style.js');
 const { computeLayoutTree } = require('./layout.js');
 const { drawHalfBlockBorder, drawQuarterBlockBorder, drawBox, applyRoundedCorners } = require('./borders.js');
-const { rasterizePixelFontCached, HALFBLOCK } = require('../pixel-font/pixelFont.js');
+const { getPixelFont, HALFBLOCK } = require('../pixel-font/pixelFont.js');
 
 const isPrimitive = (value) => typeof value === 'string' || typeof value === 'number';
 
@@ -314,7 +314,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     // Pixel font rendering path (3x5 bitmap per glyph), enabled via style.pixelFont
     if (style.pixelFont) {
       const fontFamily = style.fontFamily || 'full';
-      const { cellCols, cellRows, grid } = rasterizePixelFontCached(text, scale, fontFamily);
+      const { cellCols, cellRows, grid } = getPixelFont(text, scale, fontFamily);
       const width = frame.width;
       const height = frame.height;
 
@@ -351,10 +351,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         }
       }
 
-      // Paint quarter blocks
+      // Paint half blocks
       for (let r = 0; r < Math.min(height, cellRows); r++) {
+        const rowOffset = r * cellCols;
         for (let c = 0; c < Math.min(width, cellCols); c++) {
-          const mask = grid[r][c];
+          const mask = grid[rowOffset + c];
           if (mask === 0) continue;
           const cx = x + leftPadding + c;
           const cy = y + startRow + r;
