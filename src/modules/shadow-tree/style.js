@@ -1,9 +1,4 @@
 /**
- * Style normalization utilities.
- *
- * This module defines a canonical NormalizedStyle shape and helpers to
- * normalize a node's style as well as resolve styles across a whole VNode tree.
- *
  * Notes:
  * - Positions (x, y) are integer cell units and may be negative.
  * - Dimensions (width, height) are integer cell units; null means "auto".
@@ -33,7 +28,7 @@
  * @property {'top'|'middle'|'bottom'} verticalAlign
  * @property {number} fontSize // integer >= 1
  * @property {boolean} pixelFont
- * @property {'full'|'compact'} fontFamily // 'full' for 8x8 glyphs, 'compact' for 3x5 glyphs
+ * @property {'full'|'compact'|'default'} fontFamily // 'full' for 8x8 glyphs, 'compact' for 3x5 glyphs, 'default' for 3x5 glyphs
  * @property {NormalizedBorder} border
  * @property {number} zIndex // integer; higher paints on top among siblings
  * @property {'static'|'fixed'} position
@@ -107,12 +102,10 @@ const baseDefaults = Object.freeze({
 const defaultsByType = Object.freeze({
   text: {
     ...baseDefaults,
-    // For text, inherit default border color from foreground color in practice.
     border: { width: 0, color: 'transparent', style: 'quarter' },
   },
   img: {
     ...baseDefaults,
-    // Typical default bg for images remains transparent.
     border: { width: 0, color: 'white', style: 'quarter' },
   },
   div: {
@@ -136,7 +129,6 @@ const normalizeBorder = (type, style, defaults) => {
 
   if (typeof input === 'number') {
     const width = Math.max(0, coerceInteger(input, 0));
-    // Prefer explicit style.color for text; else fall back to default border color.
     const color = (type === 'text' && typeof style.color === 'string')
       ? style.color
       : defaultBorder.color;
@@ -152,18 +144,15 @@ const normalizeBorder = (type, style, defaults) => {
     return { width, color, style: styleKind };
   }
 
-  // Fallback
   return { ...defaultBorder };
 };
 
 /**
- * Normalize a raw style object into a canonical NormalizedStyle.
- *
  * @param {string} type
  * @param {Object} rawStyle
  * @returns {NormalizedStyle}
  */
-function normalizeStyle(type, rawStyle) {
+const normalizeStyle = (type, rawStyle) => {
   const s = rawStyle || {};
   const d = getDefaultsForType(type);
 
@@ -233,16 +222,13 @@ function normalizeStyle(type, rawStyle) {
     staticMode,
     isPreview,
   };
-}
+};
 
 /**
- * Recursively attach computedStyle to each node in the tree.
- * Does not mutate the input nodes; returns a new tree.
- *
  * @param {any} node - VNode or array of VNodes
  * @returns {any} - New VNode(s) with computedStyle
  */
-function resolveStylesTree(node) {
+const resolveStylesTree = (node) => {
   if (node == null) return node;
   if (Array.isArray(node)) return node.map(resolveStylesTree);
 
@@ -260,11 +246,9 @@ function resolveStylesTree(node) {
     computedStyle,
     content: children,
   };
-}
+};
 
 module.exports = {
   normalizeStyle,
   resolveStylesTree,
 };
-
-

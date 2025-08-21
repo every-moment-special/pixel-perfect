@@ -19,7 +19,6 @@ const flattenContent = (content) => {
     if (Array.isArray(c)) {
       flat.push(...flattenContent(c));
     } else if (c === null || c === undefined || c === false) {
-      // skip
     } else {
       flat.push(c);
     }
@@ -28,11 +27,6 @@ const flattenContent = (content) => {
 }
 
 const element = (type, style = {}, srcOrContent = null, ...restContent) => {
-  // Support flexible calling:
-  // - element(type, style, src, ...content)
-  // - element(type, style, ...content)  // src omitted
-  // - element(type, style, [children])  // third arg is content array
-
   const looksLikeVNode = (v) => v && typeof v === 'object' && typeof v.type === 'string';
 
   let src = null;
@@ -41,7 +35,6 @@ const element = (type, style = {}, srcOrContent = null, ...restContent) => {
   const isContentLike = (v) => Array.isArray(v) || looksLikeVNode(v);
 
   if (type === 'img') {
-    // For images, treat a string third argument as src by default
     if (typeof srcOrContent === 'string') {
       src = srcOrContent;
     } else if (isContentLike(srcOrContent)) {
@@ -50,10 +43,8 @@ const element = (type, style = {}, srcOrContent = null, ...restContent) => {
       src = srcOrContent;
     }
   } else if (type === 'text') {
-    // For text nodes, any primitive or node-like third arg is content
     if (srcOrContent != null) rawContent = [srcOrContent, ...restContent];
   } else {
-    // General elements: arrays or node-like => content; objects likely style mistake; primitives considered content
     if (isContentLike(srcOrContent) || isPrimitive(srcOrContent)) {
       rawContent = [srcOrContent, ...restContent];
     } else if (srcOrContent != null) {
@@ -77,7 +68,6 @@ const createBuffer = (width, height) => {
   return rows;
 }
 
-// Previous frame buffer for damage-based rendering
 let previousBuffer = null;
 let previousWidth = 0;
 let previousHeight = 0;
@@ -92,7 +82,7 @@ const moveCursorTo = (x, y) => `\x1b[${y};${x}H`; // 1-based
 
 const sgrReset = '\x1b[0m';
 
-function rowsEqual(rowA, rowB) {
+const rowsEqual = (rowA, rowB) => {
   if (!rowA || !rowB) return false;
   if (rowA.length !== rowB.length) return false;
   for (let i = 0; i < rowA.length; i++) {
@@ -101,7 +91,7 @@ function rowsEqual(rowA, rowB) {
   return true;
 }
 
-function detectVerticalScroll(prev, next) {
+const detectVerticalScroll = (prev, next) => {
   if (!prev || !next) return 0;
   const height = Math.min(prev.length, next.length);
   if (height === 0) return 0;
@@ -113,7 +103,6 @@ function detectVerticalScroll(prev, next) {
   let bestDelta = 0;
   let bestMatch = 0;
 
-  // Try scroll up by s (content moved up)
   for (let s = 1; s <= maxShift; s++) {
     let matches = 0;
     for (let y = 0; y < height - s; y++) {
@@ -125,7 +114,6 @@ function detectVerticalScroll(prev, next) {
     }
   }
 
-  // Try scroll down by s (content moved down)
   for (let s = 1; s <= maxShift; s++) {
     let matches = 0;
     for (let y = s; y < height; y++) {
@@ -140,7 +128,7 @@ function detectVerticalScroll(prev, next) {
   return bestDelta;
 }
 
-function applyScrollBuffer(buffer, delta) {
+const applyScrollBuffer = (buffer, delta) => {
   if (!buffer) return buffer;
   const height = buffer.length;
   if (height === 0) return buffer;
@@ -148,12 +136,10 @@ function applyScrollBuffer(buffer, delta) {
   const blankRow = () => new Array(width).fill(null).map(() => ({ char: ' ', fgColor: 'transparent', bgColor: 'transparent', raw: null }));
   const out = new Array(height);
   if (delta > 0) {
-    // scrolled up by delta: rows move up, new blank rows at bottom
     for (let y = 0; y < height - delta; y++) out[y] = buffer[y + delta].map((c) => ({ ...c }));
     for (let y = Math.max(0, height - delta); y < height; y++) out[y] = blankRow();
   } else if (delta < 0) {
     const s = -delta;
-    // scrolled down by s: rows move down, new blank rows at top
     for (let y = height - 1; y >= s; y--) out[y] = buffer[y - s].map((c) => ({ ...c }));
     for (let y = 0; y < Math.min(height, s); y++) out[y] = blankRow();
   } else {
@@ -162,11 +148,10 @@ function applyScrollBuffer(buffer, delta) {
   return out;
 }
 
-function writeDiffFrame(nextBuffer) {
+const writeDiffFrame = (nextBuffer) => {
   const height = nextBuffer.length;
   const width = height > 0 ? nextBuffer[0].length : 0;
 
-  // If no previousBuffer or size changed, do a full redraw baseline
   const fullRedraw = !previousBuffer || previousWidth !== width || previousHeight !== height;
 
   let currentFg = null;
@@ -176,18 +161,16 @@ function writeDiffFrame(nextBuffer) {
     process.stdout.write('\x1b[2J');
   }
 
-  // Attempt scroll detection to reduce redraw for large vertical shifts
   let prevForDiff = previousBuffer;
   if (!fullRedraw) {
     const delta = detectVerticalScroll(previousBuffer, nextBuffer);
     if (delta !== 0) {
       if (delta > 0) {
-        process.stdout.write(`\x1b[${delta}S`); // Scroll Up
+        process.stdout.write(`\x1b[${delta}S`); // scroll Up
       } else {
-        process.stdout.write(`\x1b[${-delta}T`); // Scroll Down
+        process.stdout.write(`\x1b[${-delta}T`); // scroll Down
       }
       prevForDiff = applyScrollBuffer(previousBuffer, delta);
-      // After scroll, styles are unknown
       currentFg = null;
       currentBg = null;
     }
@@ -196,8 +179,8 @@ function writeDiffFrame(nextBuffer) {
   for (let y = 0; y < height; y++) {
     const prevRow = fullRedraw ? null : prevForDiff[y];
     const nextRow = nextBuffer[y];
-
     let x = 0;
+
     while (x < width) {
       const nextCell = nextRow[x];
       const prevCell = prevRow ? prevRow[x] : null;
@@ -208,42 +191,41 @@ function writeDiffFrame(nextBuffer) {
         continue;
       }
 
-      // If nextCell is raw, write it directly and continue
       if (nextCell.raw != null) {
         process.stdout.write(moveCursorTo(x + 1, y + 1));
         process.stdout.write(nextCell.raw);
-        // Raw likely contains its own SGR; invalidate cached styles
         currentFg = null;
         currentBg = null;
         x++;
         continue;
       }
 
-      // Start a styled run where cells differ and share same fg/bg and are not raw
       const runFg = nextCell.fgColor;
       const runBg = nextCell.bgColor;
       let runStart = x;
       let runEnd = x;
+
       while (runEnd < width) {
         const n = nextRow[runEnd];
         const p = prevRow ? prevRow[runEnd] : null;
+
         if (!(fullRedraw || !cellsEqual(p, n))) break; // stop when same
         if (n.raw != null) break; // don't include raw in styled run
         if (n.fgColor !== runFg || n.bgColor !== runBg) break; // keep uniform attrs
+
         runEnd++;
       }
 
-      // Check if the run is all spaces to end-of-line with uniform bg => BCE erase
       let allSpaces = true;
+
       for (let i = runStart; i < runEnd; i++) {
         if (nextRow[i].char !== ' ') { allSpaces = false; break; }
       }
+
       const canUseBce = allSpaces && runEnd === width;
 
-      // Emit cursor move
       process.stdout.write(moveCursorTo(runStart + 1, y + 1));
 
-      // Emit minimal SGR changes
       if (currentFg !== runFg) {
         process.stdout.write(colors[runFg] || '');
         currentFg = runFg;
@@ -254,10 +236,8 @@ function writeDiffFrame(nextBuffer) {
       }
 
       if (canUseBce) {
-        // Erase to end of line honoring current background color
         process.stdout.write('\x1b[K');
       } else {
-        // Write characters for the run
         let out = '';
         for (let i = runStart; i < runEnd; i++) {
           out += nextRow[i].char;
@@ -269,18 +249,13 @@ function writeDiffFrame(nextBuffer) {
     }
   }
 
-  // Reset attributes and park cursor bottom-left like before
   process.stdout.write(sgrReset);
   process.stdout.write(`\x1b[${height};1H`);
 
-  // Update previousBuffer
   previousBuffer = nextBuffer.map((row) => row.map((c) => ({ ...c })));
   previousWidth = width;
   previousHeight = height;
 }
-
-
-// removed local border helpers; now imported from borders.js
 
 const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0, clipRect = null) => {
   if (!node) return;
@@ -295,7 +270,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
   }
 
   const type = node.type;
-  const style = node.computedStyle; // styles are resolved in a pre-pass
+  const style = node.computedStyle;
   const src = node.src ?? null;
   const content = Array.isArray(node.content) ? node.content : (node.content != null ? [node.content] : []);
 
@@ -311,7 +286,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     const verticalAlign = style.verticalAlign; // 'top', 'middle', 'bottom'
     const scale = style.fontSize;
 
-    // Pixel font rendering path (3x5 bitmap per glyph), enabled via style.pixelFont
     if (style.pixelFont) {
       const fontFamily = style.fontFamily || 'full';
       const { cellCols, cellRows, grid } = getPixelFont(text, scale, fontFamily);
@@ -333,7 +307,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         else if (verticalAlign === 'bottom') startRow = emptyLines;
       }
 
-      // Fill background (skip if transparent)
       if (bgColor !== 'transparent') {
         for (let h = 0; h < height; h++) {
           for (let w = 0; w < width; w++) {
@@ -346,12 +319,12 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             buffer[cy][cx].char = ' ';
             buffer[cy][cx].fgColor = fgColor;
             buffer[cy][cx].bgColor = bgColor;
-            buffer[cy][cx].raw = null; // ensure we draw over any prior raw (e.g., img)
+            buffer[cy][cx].raw = null; // ensure to draw over any prior raw (e.g., img)
           }
         }
       }
 
-      // Paint half blocks
+      // paint half blocks
       for (let r = 0; r < Math.min(height, cellRows); r++) {
         const rowOffset = r * cellCols;
         for (let c = 0; c < Math.min(width, cellCols); c++) {
@@ -371,7 +344,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         }
       }
 
-      // Draw border if requested
+      // draw border if requested
       const border = style.border;
       if (border.width > 0) {
         const bw = Math.max(1, Math.floor(border.width));
@@ -391,7 +364,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       return;
     }
 
-    // Default scaled text rendering
+    // default scaled text rendering
     const scaledTextLength = text.length * scale;
     const width = frame.width;
     const height = frame.height;
@@ -428,7 +401,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           const withinVerticalBand = h >= startRow && h < startRow + bandHeight;
           if (withinVerticalBand) {
             if (w < leftPadding || w >= leftPadding + scaledTextLength) {
-              // Only set background if not transparent
               if (bgColor !== 'transparent') {
                 buffer[cy][cx].char = ' ';
                 buffer[cy][cx].bgColor = bgColor;
@@ -437,13 +409,11 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
               const originalIndex = Math.floor((w - leftPadding) / scale);
               buffer[cy][cx].char = text[originalIndex] || ' ';
               buffer[cy][cx].fgColor = fgColor;
-              // Only set background if not transparent
               if (bgColor !== 'transparent') {
                 buffer[cy][cx].bgColor = bgColor;
               }
             }
           } else {
-            // Only set background if not transparent
             if (bgColor !== 'transparent') {
               buffer[cy][cx].char = ' ';
               buffer[cy][cx].bgColor = bgColor;
@@ -453,7 +423,8 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         }
       }
     }
-    // Draw border around default scaled text region, if requested
+
+    // draw border around default scaled text region, if requested
     const border = style.border;
     if (border.width > 0) {
       const bw = Math.max(1, Math.floor(border.width));
@@ -482,7 +453,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     const height = frame.height;
     const bgColor = style.backgroundColor;
 
-    // Fill the entire image area with background color first (skip if transparent)
     if (bgColor !== 'transparent') {
       for (let row = y; row < y + height; row++) {
         if (row < 0 || row >= buffer.length) continue;
@@ -499,7 +469,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
-    // Apply rounded corners to background
     if (style.borderRadius > 0) {
       applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
@@ -507,64 +476,48 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     if (src) {
       const genHeight = (style.height != null) ? height * 2 : height;
       
-      // Get image data (this will handle both regular images and GIFs)
-      // For panel previews, we want static images (no animation)
       const staticMode = style.staticMode || false;
       const isPreview = style.isPreview || false;
       
-      // For GIFs, use the actual height, not the doubled height
       const isGif = src.toLowerCase().endsWith('.gif');
       const imageHeight = (isGif && !staticMode) ? height : genHeight;
       
-      // Normalize width and height based on image orientation to display full image
       let normalizedWidth = width;
       let normalizedHeight = imageHeight;
       
-      // Only apply orientation-based normalization if we have explicit dimensions
       if (style.width != null && style.height != null && !isPreview) {
         try {
           const generator = new Generator();
           const dimensions = await generator.getImageDimensions(src);
           const imageAspectRatio = dimensions.width / dimensions.height;
-          const passedAspectRatio = width / imageHeight;
           
           if (imageAspectRatio > 1) {
-            // Image is landscape (width > height)
-            // Use passed width as base and calculate height
             normalizedWidth = width;
             normalizedHeight = Math.round(width / imageAspectRatio);
           } else {
-            // Image is portrait (height >= width)
-            // Use passed height as base and calculate width
             normalizedHeight = imageHeight;
             normalizedWidth = Math.round(imageHeight * imageAspectRatio);
           }
         } catch (error) {
-          // If we can't get image dimensions, fall back to original dimensions
           console.warn(`Could not get image dimensions for ${src}:`, error.message);
         }
       }
       
       const imageData = await getCachedOrGenerateImage(src, normalizedWidth, normalizedHeight, staticMode);
       
-      // Calculate centering offsets for the image (only for non-preview images)
       const offsetX = !isPreview ? Math.floor((width - normalizedWidth) / 2) : 0;
-      // For Y offset, ensure we don't exceed allocated space and scale appropriately
       let offsetY = 0;
+
       if (!isPreview) {
         if (isGif && !staticMode) {
-          // For GIFs, ensure normalizedHeight doesn't exceed the allocated height
           const effectiveHeight = Math.min(normalizedHeight, height);
           offsetY = Math.floor((height - effectiveHeight) / 2);
         } else {
-          // For regular images, scale the difference to match the rendering space
           offsetY = Math.floor((height - (normalizedHeight * height / imageHeight)) / 2);
         }
       }
       
-      // Check if the result is a GIF placeholder or actual image data
       if (imageData && imageData.isGif && !staticMode) {
-        // This is a GIF placeholder in animation mode, handle it like a GIF
         if (!state.gifPlayers) {
           state.gifPlayers = new Map();
         }
@@ -572,14 +525,10 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         const gifKey = src;
         const gifPlayer = state.gifPlayers.get(gifKey);
         
-        // Only use this GIF player if it's the currently active one
         if (gifPlayer && !gifPlayer.isLoading && gifPlayer.frameCache.size > 0 && state.photoPath === src) {
-          // Get the current frame from the GIF player
-          // The currentFrame might exceed frame count, so we need to normalize it
           const currentFrameIndex = gifPlayer.currentFrame % gifPlayer.frameFiles.length;
           const frameData = gifPlayer.frameCache.get(currentFrameIndex);
           
-          // If the current frame is not in cache, try to get the first available frame
           if (!frameData && gifPlayer.frameCache.size > 0) {
             const firstKey = gifPlayer.frameCache.keys().next().value;
             const firstFrame = gifPlayer.frameCache.get(firstKey);
@@ -609,7 +558,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             }
           }
         } else {
-          // Show a loading placeholder for GIFs
+          // loading placeholder for GIFs
           // const loadingText = gifPlayer && gifPlayer.isLoading ? 'Loading GIF...' : 'GIF Error';
           // const startX = x + Math.floor((width - loadingText.length) / 2);
           // const startY = y + Math.floor(height / 2);
@@ -623,7 +572,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
           // }
         }
       } else {
-        // This is regular image data (array of pixels) - either a regular image or a GIF in static mode
+        // regular image data (array of pixels) - either a regular image or a GIF in static mode
         for (const pixel of imageData) {
           const cx = x + offsetX + pixel.x;
           const cy = y + offsetY + pixel.y;
@@ -636,7 +585,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
-    // Paint children sorted by zIndex so higher zIndex paint later (on top)
+    // paint children sorted by zIndex so higher zIndex paint later (on top)
     const childrenForPaint = Array.isArray(content)
       ? [...content].sort((a, b) => ((a?.computedStyle?.zIndex) ?? 0) - ((b?.computedStyle?.zIndex) ?? 0))
       : [];
@@ -644,7 +593,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       await renderToBuffer(c, buffer, 0, 0, depth + 1, clipRect);
     }
 
-    // Apply rounded corners to image pixels as well
     if (style.borderRadius > 0) {
       applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
@@ -664,7 +612,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
     // establish clip rect if overflow is hidden or auto (scroll area)
     const childClip = (style.overflow === 'hidden' || style.overflow === 'auto') ? { x, y, width, height } : clipRect;
 
-    // Only fill background if not transparent
     if (bgColor !== 'transparent') {
       for (let row = y; row < y + height; row++) {
         if (row < 0 || row >= buffer.length) continue;
@@ -681,12 +628,10 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
-    // Apply rounded corners to background
     if (style.borderRadius > 0) {
       applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
 
-    // Paint children sorted by zIndex so higher zIndex paint later (on top)
     const childrenForPaint = Array.isArray(content)
       ? [...content].sort((a, b) => ((a?.computedStyle?.zIndex) ?? 0) - ((b?.computedStyle?.zIndex) ?? 0))
       : [];
@@ -694,18 +639,18 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       await renderToBuffer(c, buffer, 0, 0, depth + 1, childClip);
     }
 
-    // Draw vertical scrollbar when overflowing and overflow is auto
+    // draw vertical scrollbar when overflowing and overflow is auto
     if (style.overflow === 'auto' && node.scrollMeta) {
       const { contentHeight, effectiveScrollY, scrollbarVisible } = node.scrollMeta;
       const scrollable = contentHeight > height;
       if (scrollable && width >= 1 && height >= 3) {
         const sbWidth = Math.max(1, Number(style.scrollbarWidth) || 1);
         const sbMarginRight = 1;
-        // Shrink content area under scrollbar to avoid overlap when painting children
+        // shrink content area under scrollbar to avoid overlap when painting children
         const contentClip = scrollbarVisible ? { x, y, width: Math.max(0, width - (sbWidth + sbMarginRight)), height } : null;
-        // Repaint children again with tighter clip so they don't draw under the scrollbar
-        // Note: children's own rendering earlier already respected childClip, but this enforces right margin too
-        // Only needed if scrollbar is visible and contentClip narrower than full width
+        // repaint children again with tighter clip so they don't draw under the scrollbar
+        // note: children's own rendering earlier already respected childClip, but this enforces right margin too
+        // only needed if scrollbar is visible and contentClip narrower than full width
         if (scrollbarVisible && contentClip.width < width) {
           for (const c of childrenForPaint) {
             await renderToBuffer(c, buffer, 0, 0, depth + 1, contentClip);
@@ -726,7 +671,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         const thumbTop = trackTop + thumbOffset;
         const thumbBottom = thumbTop + thumbSize - 1;
 
-        // Draw track
+        // draw track
         for (let row = trackTop; row < trackTop + trackHeight; row++) { // leave 1-cell bottom margin
           if (row < 0 || row >= buffer.length) continue;
           for (let col = barLeft; col <= barRight; col++) {
@@ -737,7 +682,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
             buffer[row][col].raw = null;
           }
         }
-        // Draw thumb
+        // draw thumb
         for (let row = thumbTop; row <= thumbBottom; row++) {
           if (row < 0 || row >= buffer.length) continue;
           for (let col = barLeft; col <= barRight; col++) {
@@ -750,7 +695,7 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
         }
       }
     }
-    // Draw border for div if requested
+
     const border = style.border;
     if (border.width > 0) {
       const bw = Math.max(1, Math.floor(border.width));
@@ -768,7 +713,6 @@ const renderToBuffer = async (node, buffer, offsetX = 0, offsetY = 0, depth = 0,
       }
     }
 
-    // Apply rounded corners to border as well
     if (style.borderRadius > 0) {
       applyRoundedCorners(buffer, x, y, width, height, style.borderRadius);
     }
@@ -782,7 +726,7 @@ let renderInProgress = false;
 let queuedRoot = null;
 let queuedResolvers = [];
 
-async function processRenderQueue() {
+const processRenderQueue = async () => {
   if (renderInProgress) return;
   renderInProgress = true;
   try {
@@ -800,7 +744,6 @@ async function processRenderQueue() {
 
       writeDiffFrame(buffer);
 
-      // resolve all waiting promises with the laid out tree
       const resolvers = queuedResolvers;
       queuedResolvers = [];
       for (const resolve of resolvers) resolve(laidOutRoot);
@@ -811,12 +754,10 @@ async function processRenderQueue() {
 }
 
 const render = async (root) => {
-  // Coalesce rapid calls; only latest state is rendered
   queuedRoot = root;
   const resultPromise = new Promise((resolve) => queuedResolvers.push(resolve));
-  // Kick the processor (next tick) if idle
+
   if (!renderInProgress) {
-    // Use setImmediate when available to batch microtasks, else setTimeout 0
     (typeof setImmediate === 'function' ? setImmediate : setTimeout)(processRenderQueue, 0);
   }
   return resultPromise;

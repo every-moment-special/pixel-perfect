@@ -2,7 +2,7 @@
 
 const { measurePixelFont } = require('../pixel-font/pixelFont.js');
 
-function translateFrames(node, dx, dy) {
+const translateFrames = (node, dx, dy) => {
   if (node == null || typeof node !== 'object') return node;
   if (Array.isArray(node)) return node.map((n) => translateFrames(n, dx, dy));
   const hasFrame = node.frame && typeof node.frame === 'object';
@@ -21,7 +21,7 @@ function translateFrames(node, dx, dy) {
     frame: newFrame,
     content: translatedChildren,
   };
-}
+};
 
 const extractText = (node) => {
   const content = node.content;
@@ -58,7 +58,7 @@ const measureText = (node, style) => {
  * @param {number} parentAbsY
  * @returns {any}
  */
-function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
+const computeLayoutTree = (node, terminal, parentAbsX = 0, parentAbsY = 0) => {
   if (node == null) return node;
   if (Array.isArray(node)) {
     return node.map((n) => computeLayoutTree(n, terminal, parentAbsX, parentAbsY));
@@ -442,6 +442,6 @@ function computeLayoutTree(node, terminal, parentAbsX = 0, parentAbsY = 0) {
       rowHeights: node.gridMeta?.rowHeights || null,
     },
   };
-}
+};
 
 module.exports = { computeLayoutTree };
