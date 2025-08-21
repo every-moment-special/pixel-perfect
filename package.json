@@ -7,12 +7,12 @@
         "pp": "src/start.js"
     },
     "scripts": {
+        "start": "node --max-old-space-size=2048 src/start.js",
         "gen": "node --max-old-space-size=4096 src/utils/generate.js",
         "see": "node --max-old-space-size=2048 src/utils/display.js",
         "play": "node --max-old-space-size=8192 src/utils/play.js",
-        "start": "node --max-old-space-size=2048 src/start.js",
         "dev": "nodemon --quiet --inspect --trace-warnings --max-old-space-size=2048 --no-stdin src/start.js",
-        "test": "nodemon --quiet --inspect --trace-warnings --max-old-space-size=2048 --no-stdin src/test.js"
+        "test": "nodemon --quiet --inspect --trace-warnings --max-old-space-size=2048 --no-stdin src/tests/test.js"
     },
     "dependencies": {
         "nodemon": "^3.1.10",
