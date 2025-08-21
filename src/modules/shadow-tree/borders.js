@@ -222,17 +222,13 @@ const drawBox = (buffer, x, y, width, height, title, color = 'white') => {
 };
 
 /**
- * Create a mask for rounded corners.
- * Returns a 2D array where true means the pixel should be visible, false means it should be masked out.
- * 
- * @param {number} width - Width of the element
- * @param {number} height - Height of the element  
- * @param {number} radius - Border radius (0 = no rounding)
- * @returns {boolean[][]} - 2D mask array
+ * @param {number} width
+ * @param {number} height
+ * @param {number} radius
+ * @returns {boolean[][]}
  */
 const createRoundedCornerMask = (width, height, radius) => {
   if (radius <= 0) {
-    // No rounding, return all true
     const mask = new Array(height);
     for (let y = 0; y < height; y++) {
       mask[y] = new Array(width).fill(true);
@@ -245,21 +241,16 @@ const createRoundedCornerMask = (width, height, radius) => {
     mask[y] = new Array(width).fill(true);
   }
 
-  // For radius 100, we want perfect circles
-  // Calculate the maximum possible radius for perfect circles
   const maxRadius = Math.min(Math.floor(width / 2), Math.floor(height / 2));
   const effectiveRadius = Math.min(radius, maxRadius);
 
   if (effectiveRadius <= 0) return mask;
 
-  // For perfect circles, we need to ensure the radius is exactly half the smaller dimension
-  // This ensures the corners are perfectly round
   const circleRadius = Math.min(effectiveRadius, maxRadius);
   
   // Top-left corner
   for (let y = 0; y < circleRadius; y++) {
     for (let x = 0; x < circleRadius; x++) {
-      // Calculate distance from corner center (circleRadius, circleRadius)
       const dx = x - circleRadius;
       const dy = y - circleRadius;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -273,7 +264,6 @@ const createRoundedCornerMask = (width, height, radius) => {
   // Top-right corner
   for (let y = 0; y < circleRadius; y++) {
     for (let x = width - circleRadius; x < width; x++) {
-      // Calculate distance from corner center (width - circleRadius, circleRadius)
       const dx = x - (width - circleRadius);
       const dy = y - circleRadius;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -287,7 +277,6 @@ const createRoundedCornerMask = (width, height, radius) => {
   // Bottom-left corner
   for (let y = height - circleRadius; y < height; y++) {
     for (let x = 0; x < circleRadius; x++) {
-      // Calculate distance from corner center (circleRadius, height - circleRadius)
       const dx = x - circleRadius;
       const dy = y - (height - circleRadius);
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -301,7 +290,6 @@ const createRoundedCornerMask = (width, height, radius) => {
   // Bottom-right corner
   for (let y = height - circleRadius; y < height; y++) {
     for (let x = width - circleRadius; x < width; x++) {
-      // Calculate distance from corner center (width - circleRadius, height - circleRadius)
       const dx = x - (width - circleRadius);
       const dy = y - (height - circleRadius);
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -316,15 +304,12 @@ const createRoundedCornerMask = (width, height, radius) => {
 };
 
 /**
- * Apply rounded corner mask to a buffer region.
- * This function masks out pixels that fall outside the rounded corners.
- * 
- * @param {Array} buffer - The render buffer
- * @param {number} x - X coordinate of the element
- * @param {number} y - Y coordinate of the element
- * @param {number} width - Width of the element
- * @param {number} height - Height of the element
- * @param {number} radius - Border radius
+ * @param {Array} buffer
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {number} radius
  */
 const applyRoundedCorners = (buffer, x, y, width, height, radius) => {
   if (radius <= 0) return;
@@ -338,9 +323,7 @@ const applyRoundedCorners = (buffer, x, y, width, height, radius) => {
         const bufferY = y + row;
         
         if (bufferY >= 0 && bufferY < buffer.length && 
-            bufferX >= 0 && bufferX < buffer[0].length) {
-          // Clear the pixel by setting it to transparent
-          // Also clear the raw property which contains image data
+          bufferX >= 0 && bufferX < buffer[0].length) {
           buffer[bufferY][bufferX].char = ' ';
           buffer[bufferY][bufferX].bgColor = 'transparent';
           buffer[bufferY][bufferX].fgColor = 'transparent';
@@ -358,5 +341,3 @@ module.exports = {
   createRoundedCornerMask,
   applyRoundedCorners,
 };
-
-
