@@ -1,3 +1,5 @@
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 
@@ -6,13 +8,13 @@ const FONT_FILE = path.join(__dirname, "font.js");
 
 const FONT_FAMILY = {};
 
-function decodeRowBitsToBool(str, targetWidth) {
+const decodeRowBitsToBool = (str, targetWidth) => {
     const out = new Array(targetWidth);
     for (let i = 0; i < targetWidth; i++) out[i] = Number(str[i]);
     return out;
-}
+};
   
-function loadGlyph() {
+const loadGlyph = () => {
     try {
         if (!fs.existsSync(BITMAP_FILE)) return;
     
@@ -41,9 +43,9 @@ function loadGlyph() {
             }
         }
     } catch (_) {}
-}
+};
   
-function stringifyCompact(obj) {
+const stringifyCompact = (obj) => {
     return JSON.stringify(
       obj,
       (key, value) => {
@@ -68,17 +70,17 @@ function stringifyCompact(obj) {
       },
       2
     ).replace(/"__INLINE__(\[.*?\])"/g, (_, arr) => arr);
-  }
+};
   
-function saveFont() {
+const saveFont = () => {
     const output = 
         "const FONT_FAMILY = " + stringifyCompact(FONT_FAMILY) + ";\n\n" +
         "module.exports = FONT_FAMILY;\n";
     
     fs.writeFileSync(FONT_FILE, output, "utf8");
-}
+};
 
 module.exports = {
-    loadGlyph,
-    saveFont,
+  loadGlyph,
+  saveFont,
 };

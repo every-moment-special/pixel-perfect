@@ -1,3 +1,5 @@
+'use strict';
+
 const FONT_FAMILY = {
   "default": {
     "width": 3,

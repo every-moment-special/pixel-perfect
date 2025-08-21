@@ -3,9 +3,9 @@
 const FONT_FAMILY = require('./font.js');
 const SPACING = 1;
 const HALFBLOCK = [' ', '▀', '▄', '█'];
+const rasterCache = new Map();
 
-
-function measurePixelFont(text, scale, fontFamily = 'default') {
+const measurePixelFont = (text, scale, fontFamily = 'default') => {
   const totalGlyphs = text.length;
   const { width, height } = FONT_FAMILY[fontFamily];
   
@@ -17,9 +17,9 @@ function measurePixelFont(text, scale, fontFamily = 'default') {
   const cellRows = height * scale;
   
   return { cellCols, cellRows };
-}
+};
 
-function drawGlyphToGridFlat(bmp, penPxX, grid, scale, cellCols, cellRows) {
+const drawGlyphToGridFlat = (bmp, penPxX, grid, scale, cellCols, cellRows) => {
   const glyphHeight = bmp.length;
   const glyphWidth = bmp[0].length;
 
@@ -47,9 +47,9 @@ function drawGlyphToGridFlat(bmp, penPxX, grid, scale, cellCols, cellRows) {
       }
     }
   }
-}
+};
 
-function rasterizePixelFont(text, scale, fontFamily = 'default') {
+const rasterizePixelFont = (text, scale, fontFamily = 'default') => {
   const { cellCols, cellRows } = measurePixelFont(text, scale, fontFamily);
   const grid = new Uint8Array(cellCols * cellRows);
 
@@ -65,11 +65,9 @@ function rasterizePixelFont(text, scale, fontFamily = 'default') {
   }
 
   return { grid, cellCols, cellRows };
-}
+};
 
-const rasterCache = new Map();
-
-function getPixelFont(text, scale, fontFamily = 'default') {
+const getPixelFont = (text, scale, fontFamily = 'default') => {
   const key = `${scale}:${fontFamily}:${text}`;
   const hit = rasterCache.get(key);
   if (hit) return hit;
