@@ -1,44 +1,33 @@
 #!/usr/bin/env node
 
-const { setTerminalFontSize, isKitty, readDirectory, cleanupImageCache } = require('./utils/helper.js');
+const { GifPlayer } = require('./utils/gifPlayer.js');
+const { readDirectory, cleanupImageCache } = require('./utils/helper.js');
 const Interface = require('./components/interface.js');
 const { render } = require('./modules/shadow-tree/shadowTree.js');
 const { event } = require('./utils/helper.js');
 const { state } = require('./core/state.js');
 const path = require('path');
 
-async function main() {
-  // Clean up old GIF frame directories on startup
-  const { GifPlayer } = require('./utils/gifPlayer.js');
+const main = async () => {
   GifPlayer.cleanupAllGifFrames();
 
-  // if (isKitty) {
-  //   await setTerminalFontSize(1);
-  // }
-
-
-    try {
-    // Enter alternate screen buffer and hide cursor for a clean TUI area
+  try {
     process.stdout.write('\x1b[?1049h');
     process.stdout.write('\x1b[?25l');
-    // Disable terminal local echo as an extra safeguard (if supported)
     process.stdout.write('\x1b[?12l');
 
-    // Enable mouse tracking (SGR) so we can receive click events
     if (process.stdin.isTTY) {
         try { event.enableMouse(); } catch (_) {}
     }
 
     let tree = await Interface();
     let laidOut = await render(tree);
-    // Extra paint shortly after start to wipe any startup logs (e.g., inspector message)
+
     setTimeout(async () => {
       tree = await Interface();
       laidOut = await render(tree);
     }, 200);
-    // await gui.start();
     
-    // Scroll with arrow keys when overflow is auto
     const getMaxScrollY = () => {
       const containers = Array.isArray(laidOut) ? laidOut : [laidOut];
       let maxScrollY = 0;
@@ -54,14 +43,16 @@ async function main() {
         for (const c of children) scan(c);
       };
       for (const n of containers) scan(n);
+
       return maxScrollY;
     };
 
     const getScrollStep = (direction) => {
-      // If we have grid row metadata, jump to next/prev row boundary
       const containers = Array.isArray(laidOut) ? laidOut : [laidOut];
       let best = null;
       const current = state.scrollY || 0;
+
+      // TODO: refactor this
       const scan = (node) => {
         if (!node || typeof node !== 'object') return;
         const s = node.computedStyle || {};
@@ -92,10 +83,10 @@ async function main() {
       };
       for (const n of containers) scan(n);
       if (best == null) return direction < 0 ? current - 1 : current + 1; // fallback
+
       return best;
     };
 
-    // Selection-aware grid helpers
     const findGridContainer = (node) => {
       if (!node || typeof node !== 'object') return null;
       const style = node.computedStyle || {};
@@ -111,22 +102,26 @@ async function main() {
     const getGridContext = () => {
       const rootNodes = Array.isArray(laidOut) ? laidOut : [laidOut];
       let grid = null;
+
       for (const n of rootNodes) {
         grid = findGridContainer(n);
         if (grid) break;
       }
+
       if (!grid) return null;
+
       const container = grid;
       const rowTops = container.scrollMeta?.rowTops || [];
       const rowHeights = container.scrollMeta?.rowHeights || [];
       const content = Array.isArray(container.content) ? container.content : [];
-      // Estimate columns using first row band
       let columns = 0;
+
       if (rowTops.length > 0 && rowHeights.length > 0) {
         const top0 = rowTops[0];
         const h0 = rowHeights[0];
         const y0Min = container.frame.y + top0;
         const y0Max = y0Min + h0 - 1;
+
         for (const ch of content) {
           if (!ch || !ch.frame) continue;
           const cy = ch.frame.y;
@@ -134,9 +129,11 @@ async function main() {
         }
       }
       if (columns <= 0) columns = content.length > 0 ? content.length : 1;
+
       const viewportHeight = container.frame?.height || 0;
       const contentHeight = container.scrollMeta?.contentHeight || 0;
       const itemCount = content.length;
+
       return { container, columns, rowTops, rowHeights, viewportHeight, contentHeight, itemCount };
     };
 
@@ -212,15 +209,18 @@ async function main() {
           ensureRowVisible(ctx, rowIndex);
           tree = await Interface();
           laidOut = await render(tree);
+
           return;
         }
       }
-      // Fallback to scroll behavior
+
       const prev = state.scrollY || 0;
       const max = getMaxScrollY();
       const target = getScrollStep(-1);
       const next = Math.max(0, Math.min(target, max));
+
       if (next === prev) return;
+
       state.scrollY = next;
       tree = await Interface();
       laidOut = await render(tree);
@@ -239,23 +239,24 @@ async function main() {
           return;
         }
       }
-      // Fallback to scroll behavior
+      
       const prev = state.scrollY || 0;
       const max = getMaxScrollY();
       const target = getScrollStep(1);
       const next = Math.max(0, Math.min(target, max));
+
       if (next === prev) return;
+
       state.scrollY = next;
       tree = await Interface();
       laidOut = await render(tree);
     });
 
-    // Track last click for double-click detection
     let lastClickTime = 0;
     let lastClickIndex = -1;
     const doubleClickThresholdMs = 500;
 
-    // Mouse click handling: left click selects/open on double-click, right click goes back
+    // Mouse: left click selects/open on double-click, right click goes back
     const getTileIndexAtPoint = (container, px, py) => {
       if (!container) return -1;
       const children = Array.isArray(container.content) ? container.content : [];
@@ -357,7 +358,6 @@ async function main() {
       if (next === prev) return;
       state.selectedIndex = next;
 
-      // Ensure visibility (handle wrap-around first->last)
       const ctx = getGridContext();
       if (ctx) {
         const rowIndex = Math.floor(next / Math.max(1, ctx.columns));
@@ -391,7 +391,6 @@ async function main() {
       if (next === prev) return;
       state.selectedIndex = next;
 
-      // Ensure visibility (handle wrap-around last->first)
       const ctx = getGridContext();
       if (ctx) {
         const rowIndex = Math.floor(next / Math.max(1, ctx.columns));
@@ -402,7 +401,6 @@ async function main() {
       laidOut = await render(tree);
     });
 
-    // Rebuild interface on resize to pick up new terminal dims used inside node styles
     let resizeTimer = null;
     event.on('resize', async () => {
       if (resizeTimer) clearTimeout(resizeTimer);
@@ -414,30 +412,27 @@ async function main() {
       }, 50);
     });
 
-    // Periodic cache cleanup to prevent memory leaks
     setInterval(() => {
       cleanupImageCache();
-    }, 60000); // Clean up every minute
+    }, 60000);
 
-    // Continuous rendering loop for GIF animations
     setInterval(async () => {
       if (state.needsRerender) {
         state.needsRerender = false;
         tree = await Interface();
         laidOut = await render(tree);
       }
-    }, 100); // Check every 100ms for re-render needs
+    }, 100);
 
   } catch (err) {
     console.error("Startup error:", err);
     process.exit(1);
   }
-}
+};
 
-async function shutdown() {
+const shutdown = async () => {
   console.log("Running cleanup...");
   try {
-    // Clean up GIF players
     if (state.gifPlayers) {
       for (const [key, gifPlayer] of state.gifPlayers.entries()) {
         gifPlayer.cleanup();
@@ -445,42 +440,31 @@ async function shutdown() {
       state.gifPlayers.clear();
     }
     
-    // Clean up all GIF frame directories
     const { GifPlayer } = require('./utils/gifPlayer.js');
     GifPlayer.cleanupAllGifFrames();
     
-    if (isKitty) {
-      await setTerminalFontSize(9);
-    }
     console.log("Font size restored.");
   } catch (err) {
     console.error("Error restoring font size:", err.message);
   } finally {
-    // Restore cursor and leave alternate screen buffer
     try { process.stdout.write('\x1b[?25h'); } catch (_) {}
     try { process.stdout.write('\x1b[?12h'); } catch (_) {}
     try { process.stdout.write('\x1b[?1049l'); } catch (_) {}
     process.exit();
   }
-}
+};
 
-    event.on('key:q', shutdown);  // q to quit
-    event.on('key:c', () => {
-        // Clear cache when 'c' is pressed
-        const { clearImageCache } = require('./utils/helper.js');
-        clearImageCache();
-        
-        // Also clean up GIF frame directories
-        const { GifPlayer } = require('./utils/gifPlayer.js');
-        GifPlayer.cleanupAllGifFrames();
-    });
-process.on('SIGINT', shutdown);   // Ctrl+C
-process.on('SIGTERM', shutdown);  // kill
+event.on('key:q', shutdown);
+event.on('key:c', () => {
+  const { clearImageCache } = require('./utils/helper.js');
+  clearImageCache();
+  GifPlayer.cleanupAllGifFrames();
+});
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 process.on('uncaughtException', err => {
   console.error("Uncaught error:", err);
   shutdown();
 });
 
 main();
-
-module.exports = { isKitty };
