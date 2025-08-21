@@ -1,17 +1,17 @@
 # Pixel Perfect
-Terminal UI for browsing directories and viewing images/GIFs.
+Terminal UI for browsing directories and viewing images/GIFs
 
 > [!NOTE]
-> This project is still in early development.
+> This project is still in early development
 > 
 > **Supported formats**:
 > `.jpg`, `.jpeg`, `.png`, `.webp`, `.tiff`, `.svg`, `.gif`
 
 > [!IMPORTANT]
-> Display resolution depends on the size of terminal window.
+> Display resolution depends on the size of terminal window
 
 > [!TIP]
-> Reduce your terminal font size to view higher resolution images.
+> Reduce your terminal font size to view higher resolution images
 
 ## Requirements
 - `Node.js` ≥ 18
