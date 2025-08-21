@@ -7,14 +7,13 @@ class Event {
             process.stdin.resume();
         }
         process.stdin.setEncoding('utf8');
-        // Ensure stdin is flowing so we consume and prevent terminal echoing buffered data
+
         try { process.stdin.resume(); } catch (_) {}
 
         this.listeners = {};
         this.enableMouse();
         this.disableMouse();
 
-        // Put TTY into raw, no-echo, non-canonical mode so input bytes are not printed
         if (process.stdin.isTTY) {
           try { 
             execSync('stty -echo -icanon min 1 time 0', { stdio: 'ignore' }); 
@@ -36,13 +35,10 @@ class Event {
 
             const parsed = this.parseKey(data);
 
-            // (e.g. key)
             this.emit('key', parsed);
 
-            // (e.g. key:a)
             this.emit(`key:${parsed.name}`, parsed);
 
-            // (e.g. key:ctrl+a). Only emit combo when a modifier exists to avoid duplicates.
             let combo = [];
             if (parsed.ctrl) combo.push('ctrl');
             if (parsed.alt) combo.push('alt');
@@ -53,7 +49,6 @@ class Event {
             }
         });
 
-        // Resize
         process.stdout.on('resize', () => {
             this.emit('resize', {
                 cols: process.stdout.columns,
@@ -61,7 +56,6 @@ class Event {
             });
         });
 
-        // Ensure terminal settings are restored when exiting
         const restoreEcho = () => { 
             if (process.stdin.isTTY) { 
                 try { 
@@ -109,7 +103,6 @@ class Event {
     }
 
     parseKey(key) {
-        // Common escape sequences for special keys
         const arrows = {
             '\u001b[A': 'up',
             '\u001b[B': 'down',
@@ -128,12 +121,10 @@ class Event {
             return { name: paging[key], ctrl: false, alt: false, shift: false };
         }
 
-        // Enter (carriage return or newline)
         if (key === '\r' || key === '\n') {
             return { name: 'enter', ctrl: false, alt: false, shift: false };
         }
 
-        // Backspace (BS or DEL)
         if (key === '\u0008' || key === '\u007f') {
             return { name: 'backspace', ctrl: false, alt: false, shift: false };
         }

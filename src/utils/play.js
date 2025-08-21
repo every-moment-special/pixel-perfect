@@ -296,7 +296,6 @@ class Player {
             process.exit(0);
         });
 
-        // Handle non-TTY mode
         if (!process.stdin.isTTY) {
             console.log('\nRunning in non-interactive mode. Video will play automatically.');
             console.log('Press Ctrl+C to stop.');

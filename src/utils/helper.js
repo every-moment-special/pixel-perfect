@@ -13,7 +13,7 @@ const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
 const currentPath = process.cwd();
-// const currentPath = path.join(__dirname, '..', '..', 'resources');
+// const currentPath = path.join(__dirname, '..', '..', 'resources'); // for testing
 
 const colors = {
     black: '\x1b[38;2;0;0;0m',
@@ -104,12 +104,10 @@ const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1, fontFa
     const ext = path.extname(filename).slice(1);
     const base = ext ? filename.slice(0, -ext.length) : filename;
   
-    // Fits as-is
     if (measurePixelFont(filename, scale, fontFamily).cellCols <= maxCellWidth) return filename;
   
     const ellipsis = '...';
   
-    // If even ellipsis + ext does not fit, try trimming ext from the left; fallback to ellipsis only
     if (measurePixelFont(ellipsis + ext, scale, fontFamily).cellCols > maxCellWidth) {
       let shortExt = ext;
       while (shortExt.length > 0 && measurePixelFont(ellipsis + shortExt, scale, fontFamily).cellCols > maxCellWidth) {
@@ -118,14 +116,15 @@ const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1, fontFa
       return shortExt.length > 0 ? ellipsis + shortExt : ellipsis;
     }
   
-    // Binary search the longest prefix of base that fits with ellipsis + ext
     let left = 0;
     let right = base.length;
     let best = '';
+
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
       const candidate = base.slice(0, mid) + ellipsis + ext;
       const width = measurePixelFont(candidate, scale, fontFamily).cellCols;
+
       if (width <= maxCellWidth) {
         best = candidate;
         left = mid + 1;
@@ -133,40 +132,33 @@ const truncateFilenameKeepExtension = (filename, maxCellWidth, scale = 1, fontFa
         right = mid - 1;
       }
     }
+
     return best || (ellipsis + ext);
 };
 
-// Cache for generated directory item images
 const getCachedOrGenerateImage = async (itemPath, width, height, staticMode = false) => {
-    const { state } = require('../core/state');
-    
-    // Check if this is a GIF and we're not in static mode
+    const { state } = require('../core/state.js');
     const isGif = itemPath.toLowerCase().endsWith('.gif');
     if (isGif && !staticMode) {
-        // Return a GIF placeholder that will be handled by the shadow tree
         return { isGif: true };
     }
     
     const cacheKey = `${itemPath}:${width}:${height}`;
     
-    // Check if we have a cached version
     const cached = state.directoryItemCache.get(cacheKey);
     if (cached) {
-        // Check if file has been modified since cache
         try {
             const stats = fs.statSync(itemPath);
             if (stats.mtime.getTime() <= cached.timestamp) {
                 return cached.cells;
             }
         } catch (error) {
-            // File might not exist anymore, continue to regenerate
+            // TODO: add proper error handling
         }
     }
     
-    // Generate new image
     const cells = await generate(itemPath, width, height);
     
-    // Cache the result
     state.directoryItemCache.set(cacheKey, {
         cells,
         timestamp: Date.now()
@@ -175,9 +167,8 @@ const getCachedOrGenerateImage = async (itemPath, width, height, staticMode = fa
     return cells;
 };
 
-// Clean up old cache entries (older than 5 minutes)
 const cleanupImageCache = () => {
-    const { state } = require('../core/state');
+    const { state } = require('../core/state.js');
     const now = Date.now();
     const maxAge = 5 * 60 * 1000; // 5 minutes
     
@@ -188,11 +179,9 @@ const cleanupImageCache = () => {
     }
 };
 
-// Clear all image cache (useful for debugging)
 const clearImageCache = () => {
-    const { state } = require('../core/state');
+    const { state } = require('../core/state.js');
     state.directoryItemCache.clear();
-    console.log('Image cache cleared');
 };
 
 module.exports = {
