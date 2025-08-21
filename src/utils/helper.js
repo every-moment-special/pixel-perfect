@@ -8,7 +8,7 @@ const { measurePixelFont } = require('../modules/pixel-font/pixelFont.js');
 
 const event = new Event();
 
-const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
+const extensions = ['.jpg', '.jpeg', '.png', '.webp', '.tiff', '.svg', '.gif']; // TODO: add support for .bmp, .tga
 const terminalType = process.env.TERM;
 const isKitty = !!process.env.KITTY_WINDOW_ID;
 
