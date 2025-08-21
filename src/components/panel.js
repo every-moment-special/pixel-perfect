@@ -1,35 +1,21 @@
 const { element } = require('../modules/shadow-tree/shadowTree');
 const { terminal, readDirectory, truncateFilenameKeepExtension } = require('../utils/helper');
 const { state } = require('../core/state');
-const path = require('path');
 
-const Panel = (style = {}, content = []) => {
+const Panel = () => {
   const items = readDirectory(state.currentPath);
 
-  // Check if directory has changed and clear cache if needed
-  const currentTime = Date.now();
   if (state.lastDirectoryRead !== state.currentPath) {
-    // Directory changed, clear the cache
     state.directoryItemCache.clear();
     state.lastDirectoryRead = state.currentPath;
   }
 
   const mediaItems = items.sort((a, b) => a.type.localeCompare(b.type));
   const itemCount = mediaItems.length;
-  // Clamp selected index to valid range [0, itemCount - 1]
+
   const selected = itemCount > 0
     ? Math.max(0, Math.min(state.selectedIndex || 0, itemCount - 1))
     : 0;
-
-  style = {
-    x: style.x !== undefined ? style.x : 0,
-    y: style.y !== undefined ? style.y : terminal.height - 4,
-    width: terminal.width,
-    height: 4,
-    backgroundColor: 'black',
-    zIndex: 10,
-    position: 'fixed',
-  };
 
   return [
     element('div', {
@@ -47,7 +33,6 @@ const Panel = (style = {}, content = []) => {
         scrollbarWidth: 1,
         scrollY: state.scrollY || 0,
         justifyContent: 'center',
-        zIndex: 0,
       }, [
         mediaItems.map((item, index) => {
           const isSelected = selected === index;
@@ -61,29 +46,12 @@ const Panel = (style = {}, content = []) => {
               flexDirection: 'column', 
               backgroundColor: 'black', 
               overflow: 'hidden', 
-              zIndex: 0,
             }, [
-              // element(
-              //   'img',
-              //   { 
-              //     width: 64,
-              //     height: 32,
-              //     textAlign: 'left',
-              //     verticalAlign: 'top',
-              //     fontSize: 2,
-              //     pixelFont: true,
-              //     backgroundColor: 'black',
-              //     overflow: 'hidden',
-              //     zIndex: 0,
-              //   },
-              //   path.join(__dirname, '..', 'assets', 'dir.svg')
-              // ),
               element(
                 'text',
                 {
                   width: 64,
                   height: 32,
-                  y: 0,
                   textAlign: 'center',
                   verticalAlign: 'middle',
                   fontSize: 3,
@@ -92,7 +60,6 @@ const Panel = (style = {}, content = []) => {
                   backgroundColor: 'transparent',
                   zIndex: 10,
                   color: isSelected ? 'white' : 'coolGray',
-                  // position: 'absolute',
                   border: {
                     width: 1,
                     color: 'white',
@@ -113,7 +80,6 @@ const Panel = (style = {}, content = []) => {
                   pixelFont: true,
                   fontFamily: 'compact',
                   backgroundColor: 'black',
-                  zIndex: 0,
                   color: isSelected ? 'white' : 'coolGray',
                 },
                 truncateFilenameKeepExtension(item.name, 64, 1, 'compact')
@@ -140,7 +106,6 @@ const Panel = (style = {}, content = []) => {
                     pixelFont: true,
                     backgroundColor: 'black',
                     overflow: 'hidden',
-                    zIndex: 0,
                     staticMode: true,
                     isPreview: true,
                   },
@@ -158,7 +123,6 @@ const Panel = (style = {}, content = []) => {
                     pixelFont: true,
                     fontFamily: 'compact',
                     backgroundColor: 'black',
-                    zIndex: 0,
                     color: isSelected ? 'white' : 'coolGray',
                   },
                   truncateFilenameKeepExtension(item.name, 62, 1, 'compact')
@@ -169,7 +133,14 @@ const Panel = (style = {}, content = []) => {
       ]
     ),
 
-    element('div', style, [
+    element('div', {
+        y: terminal.height - 3,
+        width: terminal.width,
+        height: 4,
+        backgroundColor: 'black',
+        zIndex: 10,
+        position: 'fixed',
+      }, [
       element('text', {
           width: terminal.width / 2 - 4,
           height: 4,

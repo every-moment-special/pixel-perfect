@@ -11,12 +11,9 @@ const Interface = async () => {
 
   return [
     element('div', {
-      x: 0,
-      y: 0,
       width: terminal.width,
       height: terminal.height,
       backgroundColor: 'black',
-      zIndex: 0,
     },[
       Panel()
     ])
