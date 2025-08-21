@@ -1,4 +1,4 @@
-const { terminal, colors, getCachedOrGenerateImage } = require('../../utils/helper.js');
+const { colors, getCachedOrGenerateImage } = require('../../utils/helper.js');
 const { Generator } = require('../../utils/generate.js');
 const { state } = require('../../core/state.js');
 const { resolveStylesTree } = require('./style.js');
@@ -790,8 +790,8 @@ async function processRenderQueue() {
       const root = queuedRoot;
       queuedRoot = null; // collapse to latest
 
-      const width = Math.max(1, terminal.width || 80);
-      const height = Math.max(1, terminal.height || 24);
+      const width = Math.max(1, state.terminal.width || 80);
+      const height = Math.max(1, state.terminal.height || 24);
 
       const buffer = createBuffer(width, height);
       const styledRoot = resolveStylesTree(root);

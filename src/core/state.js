@@ -1,4 +1,5 @@
-const path = require('path');
+'use strict';
+
 const { currentPath } = require('../utils/helper');
 
 const state = {
@@ -10,13 +11,23 @@ const state = {
   photoPath: null,
   mediaIndex: 0,
   mediaFiles: [],
-  // Cache for generated directory item images
-  directoryItemCache: new Map(), // key: itemPath, value: { cells, timestamp }
-  lastDirectoryRead: null, // timestamp of last directory read
-  // GIF player management
-  gifPlayers: new Map(), // key: gifPath, value: GifPlayer instance
-  onGifFrameUpdate: null, // callback for when GIF frames update
-  needsRerender: false, // flag to indicate if a re-render is needed
+  directoryItemCache: new Map(),
+  lastDirectoryRead: null,
+  gifPlayers: new Map(),
+  onGifFrameUpdate: null,
+  needsRerender: false,
+
+  terminal: {
+    width: process.stdout.columns || 80,
+    height: process.stdout.rows || 24,
+  },
 };
+
+if (process.stdout && typeof process.stdout.on === 'function') {
+  process.stdout.on('resize', () => {
+    state.terminal.width = process.stdout.columns || state.terminal.width || 80;
+    state.terminal.height = process.stdout.rows || state.terminal.height || 24;
+  });
+}
 
 module.exports = { state };

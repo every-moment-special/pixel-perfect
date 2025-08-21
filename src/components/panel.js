@@ -1,5 +1,5 @@
 const { element } = require('../modules/shadow-tree/shadowTree');
-const { terminal, readDirectory, truncateFilenameKeepExtension } = require('../utils/helper');
+const { readDirectory, truncateFilenameKeepExtension } = require('../utils/helper');
 const { state } = require('../core/state');
 
 const Panel = () => {
@@ -19,8 +19,8 @@ const Panel = () => {
 
   return [
     element('div', {
-        width: terminal.width,
-        height: terminal.height - 4 - 4,
+        width: state.terminal.width,
+        height: state.terminal.height - 4 - 4,
         y: 4,
         textAlign: 'left',
         verticalAlign: 'top',
@@ -134,15 +134,15 @@ const Panel = () => {
     ),
 
     element('div', {
-        y: terminal.height - 3,
-        width: terminal.width,
+        y: state.terminal.height - 3,
+        width: state.terminal.width,
         height: 4,
         backgroundColor: 'black',
         zIndex: 10,
         position: 'fixed',
       }, [
       element('text', {
-          width: terminal.width / 2 - 4,
+          width: state.terminal.width / 2 - 4,
           height: 4,
           x: 4,
           textAlign: 'left',
@@ -157,9 +157,9 @@ const Panel = () => {
         `Directory: ${(state.currentPath || '').split('/').pop()}`
       ),
       element('text', {
-        width: terminal.width / 2 - 4,
+        width: state.terminal.width / 2 - 4,
         height: 4,
-        x: terminal.width / 2 - 4,
+        x: state.terminal.width / 2 - 4,
         textAlign: 'right',
         verticalAlign: 'bottom',
         fontSize: 1,

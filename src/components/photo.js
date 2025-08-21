@@ -1,5 +1,4 @@
 const { element } = require('../modules/shadow-tree/shadowTree');
-const { terminal } = require('../utils/helper');
 const { state } = require('../core/state');
 const { truncateFilenameKeepExtension } = require('../utils/helper');
 const { GifPlayer } = require('../utils/gifPlayer');
@@ -8,8 +7,8 @@ const { Generator } = require('../utils/generate.js');
 const Photo = async (imagePath) => {
   const isGif = imagePath.toLowerCase().endsWith('.gif');
   
-  let normalizedWidth = terminal.width;
-  let normalizedHeight = terminal.height - 4;
+  let normalizedWidth = state.terminal.width;
+  let normalizedHeight = state.terminal.height - 4;
   
   if (isGif) {
     try {
@@ -18,11 +17,11 @@ const Photo = async (imagePath) => {
       const imageAspectRatio = dimensions.width / dimensions.height;
       
       if (imageAspectRatio > 1) {
-        normalizedWidth = terminal.width;
-        normalizedHeight = Math.round(terminal.width / imageAspectRatio);
+        normalizedWidth = state.terminal.width;
+        normalizedHeight = Math.round(state.terminal.width / imageAspectRatio);
       } else {
-        normalizedHeight = terminal.height - 4;
-        normalizedWidth = Math.round((terminal.height - 4) * imageAspectRatio);
+        normalizedHeight = state.terminal.height - 4;
+        normalizedWidth = Math.round((state.terminal.height - 4) * imageAspectRatio);
       }
     } catch (error) {
       console.warn(`Could not get GIF dimensions for ${imagePath}:`, error.message);
@@ -43,8 +42,8 @@ const Photo = async (imagePath) => {
     let gifPlayer = state.gifPlayers.get(gifKey);
     
     const needsReload = gifPlayer && gifPlayer.needsReload(
-      terminal.width, 
-      terminal.height - 4, 
+      state.terminal.width, 
+      state.terminal.height - 4, 
       normalizedWidth, 
       normalizedHeight
     );
@@ -54,8 +53,8 @@ const Photo = async (imagePath) => {
       
       gifPlayer.clearSizeCache(gifPlayer.normalizedWidth, gifPlayer.normalizedHeight);
       
-      gifPlayer.width = terminal.width;
-      gifPlayer.height = terminal.height - 4;
+      gifPlayer.width = state.terminal.width;
+      gifPlayer.height = state.terminal.height - 4;
       gifPlayer.normalizedWidth = normalizedWidth;
       gifPlayer.normalizedHeight = normalizedHeight;
       
@@ -70,7 +69,7 @@ const Photo = async (imagePath) => {
       
       gifPlayer.isLoading = true;
       
-      gifPlayer.loadGif(imagePath, terminal.width, terminal.height - 4, normalizedWidth, normalizedHeight).then(() => {
+      gifPlayer.loadGif(imagePath, state.terminal.width, state.terminal.height - 4, normalizedWidth, normalizedHeight).then(() => {
         gifPlayer.isLoading = false;
         gifPlayer.play((frameData) => {
           if (state.photoPath === imagePath) {
@@ -84,7 +83,7 @@ const Photo = async (imagePath) => {
       gifPlayer.resume();
     } else if (!gifPlayer.isPlaying && gifPlayer.frameCache.size === 0) {
       gifPlayer.isLoading = true;
-      gifPlayer.loadGif(imagePath, terminal.width, terminal.height - 4, normalizedWidth, normalizedHeight).then(() => {
+      gifPlayer.loadGif(imagePath, state.terminal.width, state.terminal.height - 4, normalizedWidth, normalizedHeight).then(() => {
         gifPlayer.isLoading = false;
         gifPlayer.play((frameData) => {
           if (state.photoPath === imagePath) {
@@ -99,8 +98,8 @@ const Photo = async (imagePath) => {
 
   const elements = [
     element('div', {
-      width: terminal.width,
-      height: terminal.height,
+      width: state.terminal.width,
+      height: state.terminal.height,
       backgroundColor: 'black',
       display: 'flex',
       flexDirection: 'column',
@@ -109,8 +108,8 @@ const Photo = async (imagePath) => {
       gap: 1,
     }, [
       element('img', {
-        width: terminal.width,
-        height: terminal.height - 4,
+        width: state.terminal.width,
+        height: state.terminal.height - 4,
         textAlign: 'left',
         verticalAlign: 'top',
         pixelFont: true,
@@ -120,9 +119,9 @@ const Photo = async (imagePath) => {
       }, imagePath),
 
       element('text', {
-        width: terminal.width,
+        width: state.terminal.width,
         height: 4,
-        y: terminal.height - 4,
+        y: state.terminal.height - 4,
         textAlign: 'center',
         verticalAlign: 'bottom',
         fontSize: 1,
@@ -132,7 +131,7 @@ const Photo = async (imagePath) => {
         color: 'white',
         overflowX: 'auto',
         overflowY: 'hidden',
-      }, truncateFilenameKeepExtension(imagePath.split('/').pop(), terminal.width - 2, 1, 'compact')),
+      }, truncateFilenameKeepExtension(imagePath.split('/').pop(), state.terminal.width - 2, 1, 'compact')),
     ])
   ];
 

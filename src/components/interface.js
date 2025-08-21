@@ -1,6 +1,5 @@
 const Panel = require('./panel.js');
 const Photo = require('./photo.js');
-const { terminal } = require('../utils/helper.js');
 const { state } = require('../core/state.js');
 const { element } = require('../modules/shadow-tree/shadowTree');
 
@@ -11,8 +10,8 @@ const Interface = async () => {
 
   return [
     element('div', {
-      width: terminal.width,
-      height: terminal.height,
+      width: state.terminal.width,
+      height: state.terminal.height,
       backgroundColor: 'black',
     },[
       Panel()

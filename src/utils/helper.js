@@ -2,14 +2,11 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const Item = require('../core/item.js');
-const Terminal = require('../core/terminal.js');
 const Event = require('./event.js');
 const { Generator } = require('./generate.js');
 const { measurePixelFont } = require('../modules/pixel-font/pixelFont.js');
 
 const event = new Event();
-
-const terminal = new Terminal();
 
 const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tga', '.svg'];
 const terminalType = process.env.TERM;
@@ -204,7 +201,6 @@ module.exports = {
     isKitty,
     terminalType,
     extensions,
-    terminal,
     colors,
     event,
     currentPath,
