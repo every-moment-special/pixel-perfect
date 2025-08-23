@@ -22,6 +22,10 @@ class Player {
         this.cursorHidden = false;
         this.frameCache = new Map();
         this.maxCacheSize = CONFIG.maxCacheSize;
+        this.videoFileName = null;
+        this.videoDir = null;
+        this.width = null;
+        this.height = null;
     }
 
     createProgressBar(width = 40) {
@@ -56,7 +60,13 @@ class Player {
         }
     }
 
-    async extractFrames(videoPath, outputDir = './temp_frames') {
+    async extractFrames(videoPath, outputDir = null) {
+        if (!outputDir) {
+            const videoFileName = path.basename(videoPath, path.extname(videoPath));
+            const videoDir = path.join('.cache', 'video', videoFileName);
+            outputDir = path.join(videoDir, 'frames');
+        }
+        
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }
@@ -195,23 +205,46 @@ class Player {
         return files.length;
     }
 
+    getCacheKey(frameIndex, width, height) {
+        return `${frameIndex}_${width}x${height}`;
+    }
+
     async loadFrame(frameIndex) {
         if (frameIndex < 0 || frameIndex >= this.frameFiles.length) {
             return null;
         }
 
-        if (this.frameCache.has(frameIndex)) {
-            return this.frameCache.get(frameIndex);
+        const cacheKey = this.getCacheKey(frameIndex, this.width, this.height);
+        
+        if (this.frameCache.has(cacheKey)) {
+            return this.frameCache.get(cacheKey);
         }
 
         const framePath = path.join(this.framesDir, this.frameFiles[frameIndex]);
         const artData = await this.convertFrameToArt(framePath);
         
-        this.frameCache.set(frameIndex, artData);
+        this.frameCache.set(cacheKey, artData);
         
         if (this.frameCache.size > this.maxCacheSize) {
-            const firstKey = this.frameCache.keys().next().value;
-            this.frameCache.delete(firstKey);
+            const keysToRemove = [];
+            for (const [key, _] of this.frameCache.entries()) {
+                if (keysToRemove.length >= this.frameCache.size - this.maxCacheSize) break;
+
+                const currentCacheKey = this.getCacheKey(this.currentFrame, this.width, this.height);
+                const nextCacheKey = this.getCacheKey((this.currentFrame + 1) % this.frameFiles.length, this.width, this.height);
+                const nextNextCacheKey = this.getCacheKey((this.currentFrame + 2) % this.frameFiles.length, this.width, this.height);
+                
+                if (key !== currentCacheKey && key !== nextCacheKey && key !== nextNextCacheKey) {
+                    keysToRemove.push(key);
+                }
+            }
+
+            if (keysToRemove.length === 0) {
+                const firstKey = this.frameCache.keys().next().value;
+                this.frameCache.delete(firstKey);
+            } else {
+                keysToRemove.forEach(key => this.frameCache.delete(key));
+            }
         }
         
         return artData;
@@ -221,9 +254,28 @@ class Player {
         console.log('Loading video:', videoPath);
         this.logMemoryUsage('Before loading');
         
-        const framesDir = await this.extractFrames(videoPath);
+        this.videoFileName = path.basename(videoPath, path.extname(videoPath));
+        this.videoDir = path.join('.cache', 'video', this.videoFileName);
+        const framesDir = path.join(this.videoDir, 'frames');
+        
+        let files = [];
+        if (fs.existsSync(framesDir)) {
+            files = fs.readdirSync(framesDir)
+                .filter(file => file.endsWith('.png'))
+                .sort();
+        }
+        
+        if (files.length === 0) {
+            await this.extractFrames(videoPath, framesDir);
+            files = fs.readdirSync(framesDir)
+                .filter(file => file.endsWith('.png'))
+                .sort();
+        }
         
         const frameCount = await this.convertFramesToArt(framesDir);
+        
+        this.width = process.stdout.columns || 80;
+        this.height = Math.round(this.width / 2);
         
         console.log(`✓ Video loaded: ${frameCount} frames at ${this.fps} FPS (on-demand loading)`);
         this.logMemoryUsage('After loading');
@@ -355,19 +407,59 @@ class Player {
         }
     }
 
-    getMemoryUsage() {
+    getMemoryUsage() {  // MB
         const usage = process.memoryUsage();
         return {
-            rss: Math.round(usage.rss / 1024 / 1024), // MB
-            heapUsed: Math.round(usage.heapUsed / 1024 / 1024), // MB
-            heapTotal: Math.round(usage.heapTotal / 1024 / 1024), // MB
-            external: Math.round(usage.external / 1024 / 1024) // MB
+            rss: Math.round(usage.rss / 1024 / 1024),
+            heapUsed: Math.round(usage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(usage.heapTotal / 1024 / 1024),
+            external: Math.round(usage.external / 1024 / 1024)
         };
     }
 
     logMemoryUsage(label = '') {
         const mem = this.getMemoryUsage();
         console.log(`${label} Memory: RSS=${mem.rss}MB, Heap=${mem.heapUsed}/${mem.heapTotal}MB, External=${mem.external}MB`);
+    }
+
+    cleanup() {
+        this.pause();
+        this.frameCache.clear();
+        if (this.videoDir && fs.existsSync(this.videoDir)) {
+            try {
+                fs.rmSync(this.videoDir, { recursive: true, force: true });
+                
+                const parentDir = path.dirname(this.videoDir);
+                const grandParentDir = path.dirname(parentDir);
+                
+                try {
+                    if (fs.existsSync(parentDir) && fs.readdirSync(parentDir).length === 0) {
+                        fs.rmdirSync(parentDir);
+                    }
+                    if (fs.existsSync(grandParentDir) && fs.readdirSync(grandParentDir).length === 0) {
+                        fs.rmdirSync(grandParentDir);
+                    }
+                } catch (error) {}
+            } catch (error) {}
+        }
+    }
+
+    static cleanupAllVideoFrames() {
+        const tempVideoDir = path.join('.cache', 'video');
+        if (fs.existsSync(tempVideoDir)) {
+            try {
+                fs.rmSync(tempVideoDir, { recursive: true, force: true });
+            } catch (error) {}
+        }
+    }
+
+    clearSizeCache(width, height) {
+        const sizePattern = `_${width}x${height}`;
+        for (const [key, _] of this.frameCache.entries()) {
+            if (key.includes(sizePattern)) {
+                this.frameCache.delete(key);
+            }
+        }
     }
 }
 
